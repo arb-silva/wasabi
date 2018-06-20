@@ -1,4 +1,7 @@
 # Wasabi
+**SILVA branded fork of the original wasabi**
+This fork of wasabi provides changes made to the wasabi instance in use by the SILVA team.
+
 **Web-based environment for evolutionary sequence analysis and data visualisation.**  
 Wasabi visualises sequence data together with a phylogenetic tree within a modern, user-friendly interface.  
 It automatically stores intermediate analysis steps with data sharing links, supports PRANK and PAGAN aligners and is extendable with plugins.
