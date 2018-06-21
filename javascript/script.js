@@ -915,17 +915,19 @@ var koModel = function(){
 	self.selmode = ko.observable(self.selmodes[0]);
 	self.setmode = function(mode){ self.selmode(mode); toggleselection(mode); };
 	self.filemenu = [
-		{txt:'Library',act:'library',icn:'files',inf:'Browse library of past analyses',req:['online']},
+	/*	{txt:'Library',act:'library',icn:'files',inf:'Browse library of past analyses',req:['online']},
 		{txt:'Import',act:'import',icn:'file_add',inf:'Open a dataset in Wasabi'},
-		{txt:'Export',act:'export',icn:'file_export',inf:'Convert current dataset to a file',req:['data']},
-		{txt:'Save',act:'save',icn:'floppy',inf:'Save current dataset to analysis library',req:['data','online']},
+	*/	{txt:'Export',act:'export',icn:'file_export',inf:'Convert current dataset to a file',req:['data']},
+	/*	{txt:'Save',act:'save',icn:'floppy',inf:'Save current dataset to analysis library',req:['data','online']},
 		{txt:'Share',act:'share',icn:'link',inf:'Share current dataset',req:['data','online','sharing']},
-		{txt:'Info',act:'info',icn:'file_info',inf:'View summary info about current dataset',req:['data']}];
+	*/	{txt:'Info',act:'info',icn:'file_info',inf:'View summary info about current dataset',req:['data']},
+		];
 	self.toolsmenu = [
 		{txt:'Hide gaps',act:'seqtool',icn:'seq',inf:'Collapse sequence alignment columns',req:['seq']},
-		{txt:'Prune tree',act:'treetool',icn:'prune',inf:'Prune/hide tree leafs',req:['tree']},
+	/*	{txt:'Prune tree',act:'treetool',icn:'prune',inf:'Prune/hide tree leafs',req:['tree']},
 		{txt:'Translate',act:'translate',icn:'book_open',inf:'Translate sequence data',req:['seq']},
-		{txt:'Settings',act:'settings',icn:'settings',inf:'Adjust Wasabi behaviour'}];
+		{txt:'Settings',act:'settings',icn:'settings',inf:'Adjust Wasabi behaviour'},
+	*/	];
 	//notifications
 	self.errors = ko.observable('').extend({enable: self.helsinki}); //error reporting only for public wasabi
 	self.treealtered = ko.observable(false); //tree strcture has been modified
@@ -1100,7 +1102,7 @@ var koExport = function(){
 			if(unwrap(openitem.parentid)) targets.push({name:'alternative version of input', type:'sibling'});
 			targets.push({name:'new root level', type:'new'});
 		} else { var targets = [{name:'new root', type:'new'}]; }
-		self.savetarget(targets[0]);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+		self.savetarget(targets[0]);
 		return targets;
 	});
 	self.savename = ko.observable('Untitled analysis');
@@ -3405,11 +3407,15 @@ function treemenu(node){
     menu['Reorder subtree'] = {submenu:{'Swap children':{t:'Swap places of child nodes', icon:'swap', click:function(){node.swap()}}}};
     if(node.visibleLeafCount>2) menu['Reorder subtree']['submenu']['Ladderise subtree'] = {t:'Reorder the subtree', icon:'ladderize', click:function(){node.ladderize()}};
     if(node.parent){
-	menu['Move node'] = {t:'Graft this node to another branch in the tree', icon:'move', click:function(){movenode('',node,'circle')}, noref:true};
+	/*menu['Move node'] = {t:'Graft this node to another branch in the tree', icon:'move', click:function(){movenode('',node,'circle')}, noref:true};
 	menu['Place root here'] = {t:'Place this node as the tree outgroup', icon:'root', click:function(){node.reRoot()}};
-	menu['Remove nodes'] = {submenu:{'Remove this node': {t:'Remove this node and its children from the tree', icon:'trash', click:function(){node.remove()}}}};
+	*/
+	/*menu['Remove nodes'] = {submenu:{'Remove this node': {t:'Remove this node and its children from the tree', icon:'trash', click:function(){node.remove()}}}};
 	if(node.leafCount>2) menu['Remove nodes']['submenu']['Keep only subtree'] = {t:'Remove all nodes except this subtree', icon:'prune', click:function(){node.prune()}};
-    }	
+    }
+    */
+	if(node.leafCount>2) menu['Keep only subtree'] = {t:'Remove all nodes except this subtree', icon:'prune', click:function(){node.prune()}};
+    }
     menu['Export subtree'] = {t:'Export this subtree in newick format', icon:'file_export', click:function(){dialog('export',{exportdata:node.write()})}, css:{'border-top':'1px solid #999'}, noref:true};
     return menu;
 }
