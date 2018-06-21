@@ -524,7 +524,9 @@ class WasabiServer(BaseHTTPRequestHandler):
         if(cpulimit): status["cpulimit"] = cpulimit
         if(datalimit): status["datalimit"] = datalimit
         pdir = os.path.join(appdir,"plugins")  #send list of plugins
-        status["plugins"] = [d for d in os.walk(pdir).next()[1] if os.path.isfile(os.path.join(pdir,d,"plugin.json"))]
+        status["plugins"] = [];
+        if os.path.isdir(pdir):
+            status["plugins"] = [d for d in os.walk(pdir).next()[1] if os.path.isfile(os.path.join(pdir,d,"plugin.json"))]
         self.sendOK(json.dumps(status))
 
     #send user account metadata

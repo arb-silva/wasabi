@@ -37,7 +37,7 @@
 	  </div>
 	  
 	  <div id="topcollapse" title="Click to toggle menubar collapse" onclick="toggletop()"><span>&#x25B2;<br>&#x25B2;</span><br>...</div>
-	  
+
 	  <div class="buttonblock" style="left:5%" data-bind="visible:settingsmodel.data">
 	  	<a id="file" class="button transparent icon" onclick="topmenu(event,this)" title="Click for data menu"><img src="images/file.png"></a>
 	    <div class="toptext">Data</div>
@@ -69,6 +69,11 @@
 	  <div class="buttonblock" style="left:40%;margin-left:80px;z-index:2;display:none" data-bind="fadevisible:statusbtn()!=''">
 	  	<a id="statusbtn" onclick="dialog('jobstatus')" class="button square" data-bind="html:statusbtn" title="Click for details"></a>
 	    <div class="toptext">Notifications</div>  
+	  </div>
+	  
+	  <div id="silva_logo" class="buttonblock" onclick="window.open('https://www.arb-silva.de/')" title="Go to silva website" data-bind="visible:settingsmodel.silva_logo">
+	  	<img src="images/silva.png">
+	    <div class="toptext">Silva Website</div>  
 	  </div>
 	  
 	  <div id="logo" class="buttonblock" onclick="dialog('about')" title="Click for more information" data-bind="visible:settingsmodel.logo">

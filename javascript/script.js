@@ -361,6 +361,7 @@ var koSettings = function(){
 	self.tools = ko.observable(true);
 	self.zoom = ko.observable(true);
 	self.logo = ko.observable(true);
+        self.silva_logo = ko.observable(true);
 	//toggle seq/tree area
 	self.hidearea = function(hideseq){
 		var leftedge = dom.left.position().left;
@@ -913,13 +914,14 @@ var koModel = function(){
 	self.selmodes = ['default','columns','rows'];
 	self.selmode = ko.observable(self.selmodes[0]);
 	self.setmode = function(mode){ self.selmode(mode); toggleselection(mode); };
-	self.filemenu = [{txt:'Library',act:'library',icn:'files',inf:'Browse library of past analyses',req:['online']},
+	self.filemenu = [
+		{txt:'Library',act:'library',icn:'files',inf:'Browse library of past analyses',req:['online']},
 		{txt:'Import',act:'import',icn:'file_add',inf:'Open a dataset in Wasabi'},
 		{txt:'Export',act:'export',icn:'file_export',inf:'Convert current dataset to a file',req:['data']},
 		{txt:'Save',act:'save',icn:'floppy',inf:'Save current dataset to analysis library',req:['data','online']},
 		{txt:'Share',act:'share',icn:'link',inf:'Share current dataset',req:['data','online','sharing']},
 		{txt:'Info',act:'info',icn:'file_info',inf:'View summary info about current dataset',req:['data']}];
-	self.toolsmenu = [{txt:'PRANK aligner',act:'align',icn:'prank',inf:'Realign current sequences using Prank',req:['seq','online']},
+	self.toolsmenu = [
 		{txt:'Hide gaps',act:'seqtool',icn:'seq',inf:'Collapse sequence alignment columns',req:['seq']},
 		{txt:'Prune tree',act:'treetool',icn:'prune',inf:'Prune/hide tree leafs',req:['tree']},
 		{txt:'Translate',act:'translate',icn:'book_open',inf:'Translate sequence data',req:['seq']},
@@ -5574,7 +5576,7 @@ function startup(response){
 	
 	if(urlvars.disable){ //disable interface items with URL parameters
 		var darr = $.isArray(urlvars.disable)? urlvars.disable : [urlvars.disable];
-		$.each(['menubar','data','tools','zoom','undo','logo','tree','seq','animations','sharing'], function(i,d){
+		$.each(['menubar','data','tools','zoom','undo','logo','silva_logo','tree','seq','animations','sharing'], function(i,d){
 			if(~darr.indexOf(d)) urlvars[d] = false;
 		});
 		$.each(['filemenu','toolsmenu'], function(i,menu){ //disable items from file/toolsmenu
