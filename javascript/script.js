@@ -1044,6 +1044,8 @@ var koModel = function(){
 		}
 		return found;
 	};
+	// if >=0 activate automatic hiding of columns with less than N rows with valid data
+	self.autohidegaps = -1;
 }; //koModel
 var model = new koModel();
 
@@ -1149,7 +1151,7 @@ var koTools = function(){
 				if(n==rows.length-1){ //counting finished
 					$('#seqtool div.spinnercover').remove();
 					setTimeout(function(){  if(self.hidelimitperc()==10) self.hidelimitperc(9); else self.hidelimitperc(10); }, 16);
-				}	
+				}
 			}, 16);
 		});
 	};
@@ -1210,6 +1212,14 @@ var koTools = function(){
 		model.addundo({name:actname+' leafs',type:'tree',data:treesvg.data.root.removeAnc().write('undo'),info:affected+' leafs were '+actdesc+'.'});
 		closewindow('treetool');
 	};
+	self.markGapsForHiding = function() {
+		rows = model.visiblerows().length, threshold = self.hidelimit();
+		colflags = [];
+		$.each(self.gapcount,function(c,gaps){
+			if(rows-gaps<=threshold){ colflags[c] = 1; }
+			else colflags[c]=0;
+		});
+	}
 };
 var toolsmodel = new koTools();
 
@@ -2510,6 +2520,11 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 		}
 		
 		feedback(); //show 'imported'
+
+		//Hide common gaps automatically if requested
+		if (seqnames.length && model.autohidegaps >= 0) {
+			autohidegaps();
+		}
 		return true;
 	}//no errors => import data
 }//parseimport()
@@ -5654,8 +5669,25 @@ function startup(response){
 			getfile({plugin:pluginname, throttle:true, success:function(pjson){ new pluginModel(pjson, pluginname); }});
 		})
 	}
+	if (urlvars.hidegaps >= 0) { // hide columns according to less than N row sequence data
+		model.autohidegaps = urlvars.hidegaps;
+	}
 
 	if(settingsmodel.checkupdates()) checkversion(); //check for updates
+}
+
+function autohidegaps(urlvars) {
+		toolsmodel.hideaction('Hide');
+		toolsmodel.hideconserved(false);
+		toolsmodel.minhidelimit(false);
+		toolsmodel.hidelimit(model.autohidegaps);
+		toolsmodel.gaptype('indels');
+		toolsmodel.gaplen(0);
+		toolsmodel.buflen(0);
+		toolsmodel.countgaps();
+		setTimeout(toolsmodel.markGapsForHiding,16);
+		//alert(toolsmodel.hidecolcount());
+		setTimeout(hidecolumns,16);
 }
 
 //Initiation on page load
