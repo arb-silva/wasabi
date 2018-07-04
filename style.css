@@ -9,7 +9,7 @@
 
 /* Background */	
 body{
-	background:url("images/bg_beige.jpg") repeat scroll left top white;
+	background-color: #b3d7ee;
 	font: 14px arial, sans-serif;
 }
 
@@ -59,7 +59,6 @@ noscript div img{
 	height: 90px;
 	-webkit-transform: translateY(0px);
 	transform: translateY(0px);
-	background-color: #b3d7ee;
 	box-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 -1px 0 0 rgba(255, 255, 255, 0.4) inset;
 	-webkit-transition: height 0.5s, top 0.3s, -webkit-transform 0.5s;
 	transition: height 0.5s, top 0.3s, transform 0.5s;
