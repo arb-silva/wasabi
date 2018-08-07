@@ -3244,9 +3244,9 @@ function makeRuler(){
 			$ruler.append(markerdiv(visiblecols[t]+1,visiblecols[t+1]));
 		}
 		if(t%tick==0){ //make ruler tickmarks
-			k = t;
+			k = visiblecols[t];
 			if(t+tick>visiblecols.length) tickw = (visiblecols.length%tick)*boxw-4;
-			if(boxw<4){ if(t%100==0){ if(t>=1000){ k = '<span>'+(t/1000)+'K</span>'; }else{ k = '<span>'+t+'</span>'; } }else{ k = '&nbsp;'; } }
+			if(boxw<4){ if(k%100==0){ if(k>=1000){ k = '<span>'+(k/1000)+'K</span>'; }else{ k = '<span>'+k+'</span>'; } }else{ k = '&nbsp;'; } }
 			$ruler.append($('<span style="width:'+tickw+'px">'+k+'</span>'));
 		}
 	}
