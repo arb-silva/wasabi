@@ -1042,7 +1042,12 @@ Smits.PhyloCanvas.Render.Phylogram = function(svg, data, options){
 						Smits.Common.addRaphEventHandler(
 							svgel, 'click', Smits.PhyloCanvas.Render.Parameters.onClickAction, 
 							{svg:svg, node:d.node, x:d.x2, y:d.y}
-						);	
+						);
+						// set class for sequences in sequence_highlight_set
+						if (sequence_highlight_set.has(svgel.attrs.text)) {
+							svgel.node.classList.length += 1;
+							svgel.node.classList.value += "sequence_set_1";
+						}
 					}
 					
 					if(last){

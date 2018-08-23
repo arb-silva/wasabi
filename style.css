@@ -645,6 +645,15 @@ div.buttonmenuwrap div.buttonmenu.righticn img.icn{
 	font-family: Verdana;
 	text-anchor: start;
   }
+
+/* sequence name highlight (with tree) */
+#tree text, #names text.sequence_set_1 {
+	fill: green;
+}
+/* sequence name highlight (without tree) */
+#names span.sequence_set_1 {
+	color: green;
+}
   
   #tree line{
 	stroke: black;
