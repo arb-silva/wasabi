@@ -11,6 +11,7 @@ if(!String.prototype.capitalize){ String.prototype.capitalize = function(){ retu
 //== Globals ==//
 var currentversion = 180530; //local version (timestamp) of Wasabi
 var sequences = {}; //seq. data {name : [s,e,q]}
+var sequence_highlight_set = new Set();
 var treesvg = {}; //phylogenetic nodetree
 var leafnodes = {}; //all leafnodes+visible ancestral leafnodes
 var letters = '--..??**AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz'.split('');
@@ -2219,6 +2220,19 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 		var tmpseq = self.find("sequence").text();
 		if(tmpseq.length){ Tsequences[name] = tmpseq.replace(/\s+/g,'').split(''); }
 	};
+
+	var parse_highlight_set = function(text){ // import highlight set
+		datatype += 'highlight-set';
+		if(options.mode=='check') return;
+		sequence_highlight_set.clear();
+		var seqs = text.split("\n"); // parse the set into sequence_highlight_set global set
+		for ( var i=1; i < seqs.length; i++ ) {
+			var seq = seqs[i].trim();
+			if ( seq.length > 0 ) {
+				sequence_highlight_set.add(seqs[i]);
+			}
+		}
+	}
 	
 	var parsetree = function(treetxt,filename,format){ //import tree data
 		if(!format) format = 'newick';
@@ -2354,6 +2368,9 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 		}
 		else if(/^\s*\(+['"]?[\w]+.*\;\s*$/.test(file)){ //newick tree
 			parsetree(file, filename);
+		}
+		else if(/^wasabi-highlight-set.*$/.test(file.split("\n",1))){ //highlight set file
+			parse_highlight_set(file);
 		}
 		else{
 			errors.push("Unrecognized data format in "+filename);
@@ -2973,7 +2990,10 @@ function redraw(options){
 			$.each(model.visiblerows(),function(n,name){
 				var leafname = leafnodes[name].ensinfo? leafnodes[name].ensinfo.species : name;
 				var nspan = $('<span style="height:'+model.boxh()+'px;font-size:'+model.fontsize()+'px;cursor:pointer">'+leafname+'</span>');
-				
+				// set class for sequences in sequence_highlight_set
+				if (sequence_highlight_set.has(leafname)) {
+					nspan.addClass( "sequence_set_1");
+				}
 				var hovertimer;
 				nspan.mouseenter(function(){ //show full leaf name on mouseover
 					rowborder({y:n*model.boxh()},'keep'); //show row highlight
