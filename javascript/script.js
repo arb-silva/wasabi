@@ -4648,7 +4648,7 @@ function dialog(type,options){
 		var offlinenotif = $('<div data-bind="visible:offline" class="sectiontext"><b>Wasabi is offline</b><br>'+
 		'The Wasabi server is currently out of reach, so some functions may not work.<br>'+
 		'<a class="button square orange" onclick="communicate(\'checkserver\',\'\',{btn:this,restore:true})" title="Check server connection">Reconnect</a>'+
-		'<a class="button square" href="http://wasabiapp.org/feedback">Contact us</a> <hr></div>');
+		'<a class="button square" href="mailto:contact@arb-silva.de">Contact us</a> <hr></div>');
 		
 		var accountnotif = $('<div data-bind="visible:noaccount" class="sectiontext"><b>Wasabi is working in basic mode</b><br>For '+
 		'<span class="label" title="Storage of analysis files on server, launching realignment jobs, sharing etc.">Wasabi features</span>'+
@@ -4958,7 +4958,13 @@ function dialog(type,options){
 	}
 //about/help/contact window
 	else if(type=='about'){
-		var content = $('<div class="sectiontitle"><span class="label" title="Current version: '+model.version.local+'">About Wasabi</span></div><div class="sectiontext">'+
+		var content = $(
+		'<div class="sectiontitle"><span>SILVA version</span></div><div class="sectiontext">'+
+		'This instance of Wasabi has been modified by the  <a href="http://www.arb-silva.de" target="_blank">SILVA Team</a> and may have slightly different functionality with respect to the original software.<br>'+
+		'Please contact us firs regarding issues on this software via our <a href="mailto:contact@arb-silva.de">E-mail address</a>.<br>' +
+		'In compliance with the AGPL License, the source code of this modified software is available on <a href="https://github.com/arb-silva/wasabi/tree/silva-master" target="_blank">github</a>.'+
+		'</div>' +
+		'<div class="sectiontitle"><span class="label" title="Current version: '+model.version.local+'">About Wasabi</span></div><div class="sectiontext">'+
 		'Wasabi is a browser-based application for the visualisation and analysis of multiple alignment molecular sequence data.<br>'+
 		'Its multi-platform user interface is built on most recent HTML5 and Javascript standards and it is recommended to use the latest version of '+
 		'<a href="http://www.mozilla.org/firefox" target="_blank">Firefox</a>, <a href="http://www.apple.com/safari" target="_blank">Safari</a> '+
@@ -4968,7 +4974,7 @@ function dialog(type,options){
 		'<a class="logo" href="http://www.biocenter.helsinki.fi/bi" target="_blank"><img src="images/logo_uh.png"></a>'+
 		'<a class="logo" href="http://ec.europa.eu/research/mariecurieactions" target="_blank"><img src="images/logo_mc.jpg"></a>'+
 		'<a class="logo" href="http://www.helsinki.fi/biocentrum" target="_blank"><img style="height:30px" src="images/logo_bch.gif"></a></div>'+
-		'<div class="sectiontitle"><span>Contact</span></div><div class="sectiontext">'+
+		'<div class="sectiontitle"><span>Original developer\'s Contact</span></div><div class="sectiontext">'+
 		'Wasabi is being developed by Andres Veidenberg from the <a href="http://loytynojalab.biocenter.helsinki.fi" target="_blank">Löytynoja lab</a> in Institute of Biotechnology, University of Helsinki.<br>'+
 		'You can contact us via our <a href="http://wasabiapp.org/feedback" target="_blank">feedback webpage &gt;&gt;</a></div>');
 		var dialogwindow = makewindow('About',content,{id:type, icn:'info', btn:'OK'});
