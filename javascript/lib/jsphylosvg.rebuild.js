@@ -712,7 +712,7 @@ Smits.PhyloCanvas.Render = {
 		paddingR: 1,		//Padding on tree left side
 		paddingNames: 2, 		//Tree namelabel left side padding, pixels
 		dotLine: true,		//Right-adjust tree edges with dotted lines
-		showScaleBar: false		//(STRING,  e.g. "0.05") Shows a scale bar on tree canvas
+		showScaleBar: "0.05"		//(STRING,  e.g. "0.05") Shows a scale bar on tree canvas
 	},
 	
 	/*  Leaf label mouse events. Params: {svg,node,x,y} */
