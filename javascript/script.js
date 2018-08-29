@@ -2968,6 +2968,7 @@ function redraw(options){
 	if(options.firstrun){ //new data imported: prepare tree area
 		if(treesvg.data){ //make tree SVG
 			var svg = $("#tree>svg,#names>svg");
+			/* -- WAS-9 temporarily deactivated ---
 			svg.mousedown(function(e){ //handle nodedrag on tree
 				e.preventDefault();
 				var draggedtag = e.target.tagName;
@@ -2987,6 +2988,7 @@ function redraw(options){
 							if(helper) helper.css({left:evt.pageX+15,top:evt.pageY});
 						}
 			}); } });
+			*/
 		} else { //no tree: make tree/leafname placeholders	
 			$.each(model.visiblerows(),function(n,name){
 				var leafname = leafnodes[name].ensinfo? leafnodes[name].ensinfo.species : name;
