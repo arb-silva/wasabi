@@ -2388,6 +2388,7 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 	if(~datatype.indexOf('phyloxml')) treeopt.phyloxml = Ttreedata; else treeopt.newick = Ttreedata;
 	var treeobj = Ttreedata ? new Smits.PhyloCanvas(treeopt) : {data:''};
 	Ttreedata = '';
+	if (treeobj.data.root) { treeobj.data.root.ladderize(); }
 	
 	var seqnames = Object.keys(Tsequences);
 	
