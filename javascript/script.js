@@ -5650,7 +5650,7 @@ function startup(response){
 	if(typeof(localStorage.collapse)!='undefined') toggletop(localStorage.collapse);
 	var launchact = settingsmodel.onlaunch();
 	var urlstr = settingsmodel.urlvars, urlvars = parseurl(settingsmodel.urlvars);
-	setTimeout(function(){window.history.pushState('', '', window.location.pathname)}, 1000); //clear urlvars
+	//setTimeout(function(){window.history.pushState('', '', window.location.pathname)}, 1000); //clear urlvars
 	
 	if(urlvars.disable){ //disable interface items with URL parameters
 		var darr = $.isArray(urlvars.disable)? urlvars.disable : [urlvars.disable];
