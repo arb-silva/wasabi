@@ -275,8 +275,8 @@ var koSettings = function(){
 			} else { savefile(); self.storeundo = true; }
 		} else self.storeundo = false;
 	});
-	self.launchopt = ['blank page','import dialog','demo data','last Library item','last session'];
-	self.onlaunch = ko.observable(self.launchopt[2]);
+	self.launchopt = ['blank page','import dialog','demo data','last Library item','last session','redirect'];
+	self.onlaunch = ko.observable(self.launchopt[5]);
 	self.onlaunch.subscribe(function(val){
 		if(~val.indexOf('last')){
 			if(val=='last session'){
@@ -4982,6 +4982,15 @@ function dialog(type,options){
 		'You can contact us via our <a href="http://wasabiapp.org/feedback" target="_blank">feedback webpage &gt;&gt;</a></div>');
 		var dialogwindow = makewindow('About',content,{id:type, icn:'info', btn:'OK'});
 	}
+//redirection to silva tools using wasabi
+	else if(type=='redirection'){
+		var content = $(
+		'<div class="sectiontitle"><span>View results of SILVA tools</span></div><div class="sectiontext">'+
+		'This instance of Wasabi is used as results viewer for some of the SILVA tools. Follow one of the following links to get to the relative tool:<br>'+
+		'Sequence alignment, classification and tree service: <a href="https://www.arb-silva.de/aligner/">ACT tool</a>.<br>' +
+		'</div>' );
+		var dialogwindow = makewindow('Redirection',content,{id:type, icn:'info', btn:'OK'});
+	}
 //welcome dialog for a new (previously) created user
 	else if(type=='newuser'){
 		var expires = !isNaN(settingsmodel.useraccounts)? settingsmodel.useraccounts : '';
@@ -5728,6 +5737,7 @@ function startup(response){
 		getfile({id:localStorage.openid, file:localStorage.openfile});
 	}
 	else if(launchact=='import dialog'){ dialog('import'); } //show import dialog
+	else if(launchact=='redirect'){ dialog('redirection'); } //direct user to silva sites
 	
 	if(data.plugins){  //donwload & process plugins
 		$.each(data.plugins, function(i,pluginname){
