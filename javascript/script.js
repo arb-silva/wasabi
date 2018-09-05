@@ -13,6 +13,7 @@ var currentversion = 180530; //local version (timestamp) of Wasabi
 var sequences = {}; //seq. data {name : [s,e,q]}
 var treesvg = {}; //phylogenetic nodetree
 var leafnodes = {}; //all leafnodes+visible ancestral leafnodes
+var sequence_alternative_labels = new Map();
 var letters = '--..??**AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz'.split('');
 var alphabet = {protein:['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V','B','Z','X'],
 DNA:['A','T','G','C','N','X'], RNA:['A','G','C','U','N','X'], gaps: ['-','.','?','*'], codons:{TTT:'F', TTC:'F', TTA:'L', TTG:'L', CTT:'L', CTC:'L', CTA:'L', CTG:'L', ATT:'I', ATC:'I', ATA:'I', ATG:'M', GTT:'V', GTC:'V', GTA:'V', GTG:'V', TCT:'S', TCC:'S', TCA:'S', TCG:'S', CCT:'P',CCC:'P',CCA:'P',CCG:'P', ACT:'T',ACC:'T',ACA:'T',ACG:'T', GCT:'A', GCC:'A',GCA:'A', GCG:'A', TAT:'Y', TAC:'Y', TAA:'*',TAG:'*', CAT:'H',CAC:'H', CAA:'Q',CAG:'Q', AAT:'N',AAC:'N', AAA:'K',AAG:'K', GAT:'D', GAC:'D', GAA:'E',GAG:'E', TGT:'C',TGC:'C', TGA:'*', TGG:'W', CGT:'R',CGC:'R',CGA:'R',CGG:'R', AGT:'S',AGC:'S', AGA:'R', AGG:'R', GGT:'G', GGC:'G', GGA:'G', GGG:'G', NNN:'?', ANN:'?', TNN:'?', GNN:'?',
@@ -2227,7 +2228,23 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 			Tseqsource = filename;
 		}
 	};
-	
+
+	var parseAlternativeNames = function(text){  // import alternative names
+		datatype = 'alternative-names';
+		if(options.mode=='check') return;
+		sequence_alternative_labels.clear();
+		var seqs = text.split("\n"); // parse the set into sequence_highlight_set global set
+		for ( var i=1; i < seqs.length; i++ ) {
+			var pair = seqs[i].split("\t");
+			if ( pair.length == 1 ) continue;
+			seq = pair[0].trim();
+			altn = pair[1].trim();
+			if ( seq.length > 0  && altn.length > 0) {
+				sequence_alternative_labels.set(seq,altn);
+			}
+		}
+	}
+
 	var filenames = options.filenames || ko.utils.arrayMap(container(),function(item){ return item.name });
 	if(!$.isArray(filenames)) filenames = [filenames];
 	filenames.sort(function(a,b){ //sort filelist: [nexus,xml,phylip,...,tre]
@@ -2340,6 +2357,9 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 		}
 		else if(/^\s*\(+['"]?[\w]+.*\;\s*$/.test(file)){ //newick tree
 			parsetree(file, filename);
+		}
+		else if(/^wasabi-alternative-names/.test(file)){ // alternative sequence names
+			parseAlternativeNames(file);
 		}
 		else{
 			errors.push("Unrecognized data format in "+filename);
@@ -2953,6 +2973,10 @@ function redraw(options){
 		} else { //no tree: make tree/leafname placeholders	
 			$.each(model.visiblerows(),function(n,name){
 				var leafname = leafnodes[name].ensinfo? leafnodes[name].ensinfo.species : name;
+				alt_label = sequence_alternative_labels.get(name);
+				if ( alt_label ) {
+					leafname = alt_label;
+				}
 				var nspan = $('<span style="height:'+model.boxh()+'px;font-size:'+model.fontsize()+'px;cursor:pointer">'+leafname+'</span>');
 				
 				var hovertimer;
@@ -2974,6 +2998,7 @@ function redraw(options){
 					var ens = leafnodes[name].ensinfo, mtitle = '';
 					var nmenu = {'Delete': {t:'Remove this sequence', icon:'trash', 
 						click:function(){ model.visiblerows.remove(name); delete leafnodes[name]; delete sequences[name]; nspan.remove(); redraw(); }}};
+					nmenu['<span class="note">Sequence name: </span> '+name] = '';
 					if(ens){ //show ensembl metadata in the menu
 						mtitle = ens.genetype;
 						if(ens.taxaname) nmenu['<span class="note">Taxa</span> '+ens.taxaname] = '';

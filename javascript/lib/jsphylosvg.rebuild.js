@@ -755,6 +755,9 @@ Smits.PhyloCanvas.Render = {
 		var infotitle = 'Metadata';
 		var usedmeta = [];
 		infomenu['<span class="note">Branch length</span> '+(Math.round(node.len*1000)/1000)] = '';
+		if (node.name) {
+			infomenu['<span class="note">Node name</span> '+ node.name] = '';
+		}
 		if(!$.isEmptyObject(model.ensinfo()) && node.species){ //submenu for leaf metadata
 			infotitle = 'Ensembl';
 			infomenu['<span class="note">Species</span> '+node.species] = '';
@@ -972,6 +975,10 @@ Smits.PhyloCanvas.Render.Phylogram = function(svg, data, options){
 				node.count = namecounter;
 				var leafname = node.nodeinfo[node.nodelabel||leaflabel] || node.name;
 				if(ensinfo && node.species) leafname = node.species; //show species for Ens. genetrees
+				alt_label=sequence_alternative_labels.get(leafname);
+				if (alt_label) {
+					leafname=alt_label;
+				}
 				drawInstruct.Text.push([sParams.paddingNames, labely, leafname, leafattr, {node:node, x2:x2, y:y}]);
 			}
 			
