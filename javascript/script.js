@@ -1070,6 +1070,7 @@ var koModel = function(){
 		}
 		return found;
 	};
+	self.showRefAlignment = ko.observable(true);
 }; //koModel
 var model = new koModel();
 
@@ -5714,6 +5715,7 @@ $(function(){
 	$("#treebin div").append(svgicon('trash'));
 	var $left = $("#left"), $right = $("#right"), $dragline = $("#namesborderDragline"), $namedragger = $("#namesborderDrag"), draggerpos;
 	$('#scalebar').css('opacity',0);
+	var $refLeft = $("#refLeft"), $refRight = $("#refRight"), $refSep = $("#refSeparator");
 	
 	$("#borderDrag").draggable({ //make sequence/tree width resizable
 		axis: "x", 
@@ -5722,6 +5724,7 @@ $(function(){
 		drag: function(event, dragger) {
 			$left.css('width',dragger.offset.left);
 			$right.css('left',dragger.offset.left+10);
+			$refLeft.css('width',dragger.offset.left+10);
 			$dragline.css('width',dragger.offset.left);
 			$namedragger.css('left',dragger.offset.left-draggerpos);
 			dom.scalebar.css('width',dragger.offset.left-draggerpos)

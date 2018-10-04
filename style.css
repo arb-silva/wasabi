@@ -14,6 +14,8 @@ body{
 }
 
 #page{
+	display: flex;
+	flex-direction: column;
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -52,10 +54,8 @@ noscript div img{
 
 /* Top bar (buttons, menus) */
 #top{
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
+	position: relative;
+	width: 100%;
 	height: 90px;
 	-webkit-transform: translateY(0px);
 	transform: translateY(0px);
@@ -69,12 +69,47 @@ noscript div img{
     -ms-user-select: none;
 }
 #top.away{
+	display: none;
 	-webkit-transform: translateY(-100px);
 	transform: translateY(-100px);
 }
 
 #top, #left, #right {
 	-webkit-touch-callout: none; /* disable zoomglass on touch hold */
+}
+
+#middle, #refAlign, #refSeparator, #treeAndSeq {
+	position: relative;
+}
+
+#refLeft {
+	width: 422px;
+}
+
+#refRight {
+	flex-grow: 1;
+}
+
+#middle {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+	width: 100%;
+	height: 100px;
+}
+
+#refAlign {
+	display: flex;
+	flex-direction: row;
+	height: 60px;
+	width: 100%;
+}
+
+#treeAndSeq {
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	flex-grow: 1;
 }
 
 /* collapsed/hidden menubar */
@@ -86,16 +121,7 @@ body.mintop #top div.buttonblock{ top: -3px; }
 body.mintop #top #logo{ top: -6px; }
 body.mintop.hiddentop #top #logo{ top: -11px; }
 body.mintop #top div.buttonmenuwrap{ top: 47px; }
-body.mintop #left{ top: 90px; bottom: 28px; }
-body.mintop.hiddentop #left{ top: 46px; }
-body.mintop #namesborderDragline{ top: 70px; }
-body.mintop.hiddentop #namesborderDragline{ top: 30px; }
-body.mintop #right{ top: 60px; bottom: 10px; }
-body.mintop.hiddentop #right{ top: 20px; }
 body.notop #top{ display:none; }
-body.notop #namesborderDragline{ top: 15px; }
-body.notop #left{ top: 25px; }
-body.notop #right{ top: 5px; }
 body.mintop #scalebar{ bottom: 0; }
 
 .toptext{
@@ -593,9 +619,9 @@ div.buttonmenuwrap div.buttonmenu.righticn img.icn{
 #left {
 	position: absolute;
 	opacity: 0;
-	top: 125px;
+	top: 25px;
 	left: 10px;
-	bottom: 68px;
+	bottom: 18px;
 	width: 300px;
 	overflow: hidden;
 	-webkit-transition: top 0.5s, bottom 0.5s, opacity 0.5s;
@@ -749,6 +775,20 @@ div.buttonmenuwrap div.buttonmenu.righticn img.icn{
 	background: linear-gradient(#fef9e6, rgba(255,255,255,0));
   }
   
+#refSeparator{
+	position: absolute;
+    right: 0;
+    top: 5px;
+    bottom: 5px;
+    width: 10px;
+    font-size: 20px;
+    color: #666;
+    text-align: center;
+    text-shadow: 0 1px 0 white;
+ 	-moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
   
  #borderDrag{
 	position: absolute;
@@ -812,7 +852,7 @@ div.buttonmenuwrap div.buttonmenu.righticn img.icn{
  	position: absolute;
  	visibility: hidden;
  	left: 5px;
- 	top: 110px;
+ 	top: 10px;
  	width: 297px;
  	height: 3px;
  	box-shadow: 0 2px 2px #999 inset;
@@ -927,8 +967,8 @@ img#rightshadow{
 	opacity: 0;
 	left: 310px;
 	right: 0;
-	top: 100px;
-	bottom: 50px;
+	top: 0px;
+	bottom: 0px;
 	-webkit-transition: top 0.5s, bottom 0.5s, opacity 0.5s;
 	transition: top 0.5s, bottom 0.5s, opacity 0.5s;
 }
@@ -2358,10 +2398,8 @@ div.paper{
 }
 
 #bottom{
-	position: absolute;
-	bottom: 0;
-	left: 0;
-	right: 0;
+	position: relative;
+	width: 100%;
 	height: 40px;
 	text-align: center;
 	color: #dfac00;
