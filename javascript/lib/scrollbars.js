@@ -197,8 +197,9 @@ function mCustomScrollbar(){
 			if(target>0){ target = 0; }
 			else if(Math.abs(target)>totalContentWidth-visibleWidth){ target = visibleWidth-totalContentWidth; }
 			clearTimeout(scrollXTimer);
-			scrollXTimer = setTimeout(function(){ makeImage('x:'+target) },100);
+			scrollXTimer = setTimeout(function(){ makeImage('x:'+target); makeRefImage('x:'+target); },100);
 			dom.wrap.css('left',target);
+			dom.refseqwrap.css('left',target);
 		}
 		var scrollYTimer;
 		// do vertical scrolling //

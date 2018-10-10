@@ -51,7 +51,6 @@ noscript div img{
     text-shadow: 0 0 1px #444341;
 }
 
-
 /* Top bar (buttons, menus) */
 #top{
 	position: relative;
@@ -83,10 +82,25 @@ noscript div img{
 }
 
 #refLeft {
+	display: flex;
+	flex-direction: row;
 	width: 422px;
 }
 
+#reftitle {
+	font-size: 20px;
+	flex-grow: 2;
+	margin: auto;
+	text-align: center;
+	}
+
+#reflabels {
+	font-size: 9px;
+	flex-grow: 1;
+}
+
 #refRight {
+	position: relative;
 	flex-grow: 1;
 }
 
@@ -101,7 +115,7 @@ noscript div img{
 #refAlign {
 	display: flex;
 	flex-direction: row;
-	height: 60px;
+	/*height: 60px;*/
 	width: 100%;
 }
 
@@ -973,6 +987,15 @@ img#rightshadow{
 	transition: top 0.5s, bottom 0.5s, opacity 0.5s;
 }
 
+#refwindow {
+	position: absolute;
+	overflow: hidden;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+
 #seqwindow {
 	position: absolute;
 	top: 0;
@@ -1053,7 +1076,8 @@ span.spinner.cancel:hover svg.icon>path, a.button:hover span.spinner.cancel svg.
 	fill: white;
 	stroke: none;
 }
- 
+
+ #refseqwrap,
  #wrap {
  	position: absolute;
  	left: 0;
@@ -1133,6 +1157,13 @@ span.spinner.cancel:hover svg.icon>path, a.button:hover span.spinner.cancel svg.
 #seq{ position: relative; }
 
 #seq div.tile{
+	position: absolute;
+	display: none;
+}
+
+#refseq{ position: relative; }
+
+#refseq div.reftile{
 	position: absolute;
 	display: none;
 }
