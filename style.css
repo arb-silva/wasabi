@@ -9,7 +9,7 @@
 
 /* Background */	
 body{
-	background:url("images/bg_beige.jpg") repeat scroll left top white;
+	background-color: #b3d7ee;
 	font: 14px arial, sans-serif;
 }
 
@@ -59,7 +59,6 @@ noscript div img{
 	height: 90px;
 	-webkit-transform: translateY(0px);
 	transform: translateY(0px);
-	background: url(images/bg_top.jpg) repeat-x bottom left;
 	box-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 -1px 0 0 rgba(255, 255, 255, 0.4) inset;
 	-webkit-transition: height 0.5s, top 0.3s, -webkit-transform 0.5s;
 	transition: height 0.5s, top 0.3s, transform 0.5s;
@@ -443,7 +442,7 @@ span.buttongroup a.button.right{
 }
 
 #logo{
-	right: 20px;
+	right: 160px;
 	cursor: pointer;
 	padding-top: 8px;
 }
@@ -456,6 +455,21 @@ span.buttongroup a.button.right{
 	right: 130px;
 }
 #logo:hover .toptext{ opacity: 1; }
+
+#silva_logo{
+	right: 10px;
+	cursor: pointer;
+	padding-top: 8px;
+}
+#silva_logo .toptext{
+	opacity: 0;
+	cursor: pointer;
+	-webkit-transition: opacity ease 0.2s;
+	transition: opacity ease 0.2s;
+	width: auto;
+	right: 20px;
+}
+#silva_logo:hover .toptext{ opacity: 1; }
 
 #zoombtns { vertical-align: bottom; }
 #top a.zoom {
@@ -615,20 +629,13 @@ div.buttonmenuwrap div.buttonmenu.righticn img.icn{
 #tree>svg{
 	background-color: white;
 	position: absolute;
-}
- 
- #tree circle, #names text{
-	cursor: pointer;
- }
- #left.dragmode #tree circle, #left.dragmode #names text{
-	cursor: default;
- } 
+} 
  
  #names svg{
 	-webkit-transition: font-size 0.5s;
 	transition: font-size 0.5s;
  }
- #treewrap.minimal #tree circle, #treewrap.minimal #tree line[stroke-dasharray], #treewrap.minimal #names svg{
+ #treewrap.minimal #tree circle, #treewrap.minimal #tree line.dashed{
 	display: none;
  }
  
@@ -640,16 +647,27 @@ div.buttonmenuwrap div.buttonmenu.righticn img.icn{
 	height: 100%;
   }
   
+  #tree circle, #names text{
+	cursor: pointer;
+ }
+ #left.dragmode #tree circle, #left.dragmode #names text{
+	cursor: default;
+ }
+  
   #tree text, #names text{
 	fill: black;
 	font-family: Verdana;
 	text-anchor: start;
   }
-  
-  #tree text {
-	font-weight: bold;
-	stroke: white;
-  }
+
+/* sequence name highlight (with tree) */
+#tree text, #names text.sequence_set_1 {
+	fill: green;
+}
+/* sequence name highlight (without tree) */
+#names span.sequence_set_1 {
+	color: green;
+}
   
   #tree line{
 	stroke: black;
@@ -658,7 +676,7 @@ div.buttonmenuwrap div.buttonmenu.righticn img.icn{
   }
   
   #tree line.dashed{
-	  stroke-dasharray: 1,4;
+	stroke-dasharray: 1,4;
   }
   
   #tree circle{
@@ -673,8 +691,13 @@ div.buttonmenuwrap div.buttonmenu.righticn img.icn{
   
   #tree circle:hover{
 	stroke: red;
+	fill: red;
 	stroke-width: 3;
-	z-index: 10
+	r: 5;
+  }
+  
+  #tree circle.highlight, #names text.highlight{
+	  fill: red;
   }
   
   
@@ -693,6 +716,8 @@ div.buttonmenuwrap div.buttonmenu.righticn img.icn{
   	display: none;
   	top: 40%;
   	width: 80%;
+  	min-width: 70px;
+  	margin: 15px;
   	text-align: center;
   	font-size: 36px;
     color: #EEE9E3;

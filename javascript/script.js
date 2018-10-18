@@ -9,10 +9,12 @@ if(!String.prototype.trim){ String.prototype.trim = function(){ return this.repl
 if(!String.prototype.capitalize){ String.prototype.capitalize = function(){ return this.charAt(0).toUpperCase()+this.slice(1); }; }
 
 //== Globals ==//
-var currentversion = 180530; //local version (timestamp) of Wasabi
+var currentversion = "180530-slv1"; //local version (timestamp) of Wasabi
 var sequences = {}; //seq. data {name : [s,e,q]}
+var sequence_highlight_set = new Set();
 var treesvg = {}; //phylogenetic nodetree
 var leafnodes = {}; //all leafnodes+visible ancestral leafnodes
+var sequence_alternative_labels = new Map();
 var letters = '--..??**AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz'.split('');
 var alphabet = {protein:['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V','B','Z','X'],
 DNA:['A','T','G','C','N','X'], RNA:['A','G','C','U','N','X'], gaps: ['-','.','?','*'], codons:{TTT:'F', TTC:'F', TTA:'L', TTG:'L', CTT:'L', CTC:'L', CTA:'L', CTG:'L', ATT:'I', ATC:'I', ATA:'I', ATG:'M', GTT:'V', GTC:'V', GTA:'V', GTG:'V', TCT:'S', TCC:'S', TCA:'S', TCG:'S', CCT:'P',CCC:'P',CCA:'P',CCG:'P', ACT:'T',ACC:'T',ACA:'T',ACG:'T', GCT:'A', GCC:'A',GCA:'A', GCG:'A', TAT:'Y', TAC:'Y', TAA:'*',TAG:'*', CAT:'H',CAC:'H', CAA:'Q',CAG:'Q', AAT:'N',AAC:'N', AAA:'K',AAG:'K', GAT:'D', GAC:'D', GAA:'E',GAG:'E', TGT:'C',TGC:'C', TGA:'*', TGG:'W', CGT:'R',CGC:'R',CGA:'R',CGG:'R', AGT:'S',AGC:'S', AGA:'R', AGG:'R', GGT:'G', GGC:'G', GGA:'G', GGG:'G', NNN:'?', ANN:'?', TNN:'?', GNN:'?',
@@ -256,6 +258,7 @@ var koSettings = function(){
 	self.skipversion = ko.observable(0); //skip a version update
 	//autosave settings
 	self.undo = ko.observable(true); //save actions to history list
+	self.undo.subscribe(function(enable){ if(!enable) model.clearundo(); });
 	self.undolength = ko.observable(5); //max lenght of actions history
 	self.storeundo = false; //autosave on undo
 	self.autosave = ko.observable(false); //autosave dataset to library
@@ -273,8 +276,8 @@ var koSettings = function(){
 			} else { savefile(); self.storeundo = true; }
 		} else self.storeundo = false;
 	});
-	self.launchopt = ['blank page','import dialog','demo data','last Library item','last session'];
-	self.onlaunch = ko.observable(self.launchopt[2]);
+	self.launchopt = ['blank page','import dialog','demo data','last Library item','last session','redirect'];
+	self.onlaunch = ko.observable(self.launchopt[5]);
 	self.onlaunch.subscribe(function(val){
 		if(~val.indexOf('last')){
 			if(val=='last session'){
@@ -330,14 +333,30 @@ var koSettings = function(){
 	//tree display settings
 	self.leaflabels = ['label'];
 	self.leaflabel = ko.observable('label');
+	self.leaflabel.subscribe(function(newlabel){ //change tree leaflabel text
+		if(treesvg.data && $('#treewrap').css('display')!='none'){
+			$('#tree text').each(function(i,el){
+				var tnode = treesvg.data.root.getById(parseInt(el.getAttribute('nodeid')));
+				el.textContent = tnode.nodeinfo[newlabel] || ' ';
+			});
+		}
+	});
 	self.nodelabels = ['none','label','branchlength'];
 	self.nodelabel = ko.observable('none');
+	self.nodelabel.subscribe(function(newlabel){ //change tree nodelabel text
+		if(treesvg.data && $('#treewrap').css('display')!='none'){
+			$('#tree text').each(function(i,el){
+				var tnode = treesvg.data.root.getById(parseInt(el.getAttribute('nodeid')));
+				el.textContent = tnode.nodeinfo[newlabel] || ' ';
+			});
+		}
+	});
 	self.csizes = ['hidden',3,5,7,10];
 	self.csize = ko.observable(3);
-	self.redrawtree = ko.computed(function(){ //redraw tree after settings change
-		var ll = self.leaflabel(); var nl = self.nodelabel(); var cs = self.nodelabel();
-		if(treesvg.refresh) treesvg.refresh({treeonly:true});
-	}).extend({throttle:1000});
+	self.csize.subscribe(function(newsize){
+		if(newsize=='hidden') $('#tree circle').css('display','none');
+		else $('#tree circle').css({r:newsize, display:''});
+	});
 	//UI settings
 	self.backgrounds = ['beige','white','grey'];
 	self.bg = ko.observable('beige');
@@ -361,10 +380,11 @@ var koSettings = function(){
 	self.tools = ko.observable(true);
 	self.zoom = ko.observable(true);
 	self.logo = ko.observable(true);
-	//toggle seq/tree area
-	self.hidearea = function(hideseq){
+	self.silva_logo = ko.observable(true);
+	//resize seq/tree area
+	self.resizew = function(hide){
 		var leftedge = dom.left.position().left;
-		var rightedge = hideseq?dom.page.width()-30:leftedge+12;
+		var rightedge = hide=='seq'? dom.page.width()-30 : hide=='tree'? leftedge+12 : parseInt(dom.page.width()/3);
 		var namesw = Math.min(Math.max(50,parseInt(rightedge/3)),200); //tree names width 50-200px
 		dom.left.css('width', rightedge-leftedge);
 		dom.right.css('left', rightedge);
@@ -373,10 +393,15 @@ var koSettings = function(){
 		dom.tree.css('right', namesw);
 		dom.names.css('width', namesw);
 	}
-	self.tree = ko.observable(true); // =>model.treesource
-	self.tree.subscribe(function(enable){ if(!enable) self.hidearea(); }); //hide tree
-	self.seq = ko.observable(true); // =>model.seqsource
-	self.seq.subscribe(function(enable){ if(!enable) self.hidearea('seq'); }); //hide msa
+	self.seq = ko.observable(false); // =>model.seqsource
+	self.tree = ko.observable(false); // =>model.treesource
+	self.togglearea = ko.computed(function(){
+		var seq = self.seq(); var tree = self.tree();
+		if(!dom.left) return; //init run
+		if(seq && !tree){ self.resizew('tree'); } //hide tree
+		else if(tree && !seq){ self.resizew('seq'); } //hide seq
+		else{ self.resizew(); } //show both
+	}).extend({throttle:500});
 }
 var settingsmodel = new koSettings();
 var toggle = settingsmodel.toggle;
@@ -493,7 +518,7 @@ var koLibrary = function(){
 		if(url) urlstr = 'url='+url;
 		else if(item && item.id) urlstr = 'id='+item.id+filestr;
 		if(urlstr) urlstr = '?'+urlstr;
-		return encodeURI(window.location.href+urlstr);
+		return encodeURI('http://'+window.location.host+urlstr);
 	}
 	
 	self.shareicon = function(item,file,title,url){ //generate share link icon
@@ -844,7 +869,7 @@ var koModel = function(){
 	self.zoomlevel = ko.observable(5); //index of the zlevel array
 	self.zoomlevel.subscribe(function(val){
 		if(settingsmodel.keepzoom()) localStorage.zoomlevel = JSON.stringify(val); //store new zoom level
-		if(settingsmodel.nodelabel()!='none' && treesvg.refresh) treesvg.refresh({treeonly:true}); //redraw tree labels
+		if(settingsmodel.nodelabel()!='none') $('#tree text').css('font-size', parseInt(self.boxh()*0.8)); //resize tree labels
 	});
 	self.zoomperc = ko.pureComputed(function(){
 		var l = self.zoomlevel(), lc = self.zlevels.length-1;
@@ -913,17 +938,20 @@ var koModel = function(){
 	self.selmodes = ['default','columns','rows'];
 	self.selmode = ko.observable(self.selmodes[0]);
 	self.setmode = function(mode){ self.selmode(mode); toggleselection(mode); };
-	self.filemenu = [{txt:'Library',act:'library',icn:'files',inf:'Browse library of past analyses',req:['online']},
+	self.filemenu = [
+	/*	{txt:'Library',act:'library',icn:'files',inf:'Browse library of past analyses',req:['online']},
 		{txt:'Import',act:'import',icn:'file_add',inf:'Open a dataset in Wasabi'},
-		{txt:'Export',act:'export',icn:'file_export',inf:'Convert current dataset to a file',req:['data']},
-		{txt:'Save',act:'save',icn:'floppy',inf:'Save current dataset to analysis library',req:['data','online']},
+	*/	{txt:'Export',act:'export',icn:'file_export',inf:'Convert current dataset to a file',req:['data']},
+	/*	{txt:'Save',act:'save',icn:'floppy',inf:'Save current dataset to analysis library',req:['data','online']},
 		{txt:'Share',act:'share',icn:'link',inf:'Share current dataset',req:['data','online','sharing']},
-		{txt:'Info',act:'info',icn:'file_info',inf:'View summary info about current dataset',req:['data']}];
-	self.toolsmenu = [{txt:'PRANK aligner',act:'align',icn:'prank',inf:'Realign current sequences using Prank',req:['seq','online']},
+	*/	{txt:'Info',act:'info',icn:'file_info',inf:'View summary info about current dataset',req:['data']},
+		];
+	self.toolsmenu = [
 		{txt:'Hide gaps',act:'seqtool',icn:'seq',inf:'Collapse sequence alignment columns',req:['seq']},
-		{txt:'Prune tree',act:'treetool',icn:'prune',inf:'Prune/hide tree leafs',req:['tree']},
+	/*	{txt:'Prune tree',act:'treetool',icn:'prune',inf:'Prune/hide tree leafs',req:['tree']},
 		{txt:'Translate',act:'translate',icn:'book_open',inf:'Translate sequence data',req:['seq']},
-		{txt:'Settings',act:'settings',icn:'settings',inf:'Adjust Wasabi behaviour'}];
+		{txt:'Settings',act:'settings',icn:'settings',inf:'Adjust Wasabi behaviour'},
+	*/	];
 	//notifications
 	self.errors = ko.observable('').extend({enable: self.helsinki}); //error reporting only for public wasabi
 	self.treealtered = ko.observable(false); //tree strcture has been modified
@@ -972,6 +1000,7 @@ var koModel = function(){
 	self.clearundo = function(){
 		self.undostack.removeAll();
 		self.refreshundo();
+		self.treebackup = '';
 	};
 	self.activeundo = {name:ko.observableArray(), undone:ko.observable(''), data:ko.observable('')};
 	self.refreshundo = function(data,redo){
@@ -1044,6 +1073,8 @@ var koModel = function(){
 		}
 		return found;
 	};
+	// if >=0 activate automatic hiding of columns with less than N rows with valid data
+	self.autohidegaps = -1;
 }; //koModel
 var model = new koModel();
 
@@ -1098,7 +1129,7 @@ var koExport = function(){
 			if(unwrap(openitem.parentid)) targets.push({name:'alternative version of input', type:'sibling'});
 			targets.push({name:'new root level', type:'new'});
 		} else { var targets = [{name:'new root', type:'new'}]; }
-		self.savetarget(targets[0]);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+		self.savetarget(targets[0]);
 		return targets;
 	});
 	self.savename = ko.observable('Untitled analysis');
@@ -1149,7 +1180,7 @@ var koTools = function(){
 				if(n==rows.length-1){ //counting finished
 					$('#seqtool div.spinnercover').remove();
 					setTimeout(function(){  if(self.hidelimitperc()==10) self.hidelimitperc(9); else self.hidelimitperc(10); }, 16);
-				}	
+				}
 			}, 16);
 		});
 	};
@@ -1192,7 +1223,7 @@ var koTools = function(){
 	};
 	self.processLeafs = function(func,affected){ //hide/remove all marked/unmarked leafs
 		if(typeof(func)!='string'){
-			var markedcount = $('#names tspan[fill=orange]').length;
+			var markedcount = $('#names text[fill=orange]').length;
 			var target = self.leafsel()=='unmarked'? false : true;
 			var affected = target? markedcount : model.visiblerows().length-markedcount;
 			var func = self.leafaction()=='prune'? 'remove':'hideToggle';
@@ -1207,9 +1238,19 @@ var koTools = function(){
 		$.each(leafnodes,function(n,node){ if(node.active==target) node[func]('hide','nocount'); });
 		treesvg.refresh();
 		var actdesc = func=='remove'? 'removed' : 'hidden', actname = func=='remove'? 'Remove' : 'Hide';
-		model.addundo({name:actname+' leafs',type:'tree',data:treesvg.data.root.removeAnc().write('undo'),info:affected+' leafs were '+actdesc+'.'});
+		if(settingsmodel.undo()){ setTimeout(function(){
+			model.addundo({name:actname+' leafs',type:'tree',data:treesvg.data.root.removeAnc().write('undo'),info:affected+' leafs were '+actdesc+'.'});
+		},100)}
 		closewindow('treetool');
 	};
+	self.markGapsForHiding = function() {
+		rows = model.visiblerows().length, threshold = self.hidelimit();
+		colflags = [];
+		$.each(self.gapcount,function(c,gaps){
+			if(rows-gaps<=threshold){ colflags[c] = 1; }
+			else colflags[c]=0;
+		});
+	}
 };
 var toolsmodel = new koTools();
 
@@ -1476,7 +1517,7 @@ function communicate(action, senddata, options){
 		  		if(action!='errorlog') communicate('errorlog',{errorlog:errorstr}); //send error to server
 		  	}
 		  	console.log('Wasabi server responded to "'+action+'" with error: '+msg);
-		  	errorfunc(msg);
+		  	errorfunc(toString(msg));
 		  }
 		  else{ //no response
 				if(options.retry){ //allow 2 retries
@@ -2180,6 +2221,19 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 		var tmpseq = self.find("sequence").text();
 		if(tmpseq.length){ Tsequences[name] = tmpseq.replace(/\s+/g,'').split(''); }
 	};
+
+	var parse_highlight_set = function(text){ // import highlight set
+		datatype += 'highlight-set';
+		if(options.mode=='check') return;
+		sequence_highlight_set.clear();
+		var seqs = text.split("\n"); // parse the set into sequence_highlight_set global set
+		for ( var i=1; i < seqs.length; i++ ) {
+			var seq = seqs[i].trim();
+			if ( seq.length > 0 ) {
+				sequence_highlight_set.add(seqs[i]);
+			}
+		}
+	}
 	
 	var parsetree = function(treetxt,filename,format){ //import tree data
 		if(!format) format = 'newick';
@@ -2202,7 +2256,23 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 			Tseqsource = filename;
 		}
 	};
-	
+
+	var parseAlternativeNames = function(text){  // import alternative names
+		datatype = 'alternative-names';
+		if(options.mode=='check') return;
+		sequence_alternative_labels.clear();
+		var seqs = text.split("\n"); // parse the set into sequence_highlight_set global set
+		for ( var i=1; i < seqs.length; i++ ) {
+			var pair = seqs[i].split("\t");
+			if ( pair.length == 1 ) continue;
+			seq = pair[0].trim();
+			altn = pair[1].trim();
+			if ( seq.length > 0  && altn.length > 0) {
+				sequence_alternative_labels.set(seq,altn);
+			}
+		}
+	}
+
 	var filenames = options.filenames || ko.utils.arrayMap(container(),function(item){ return item.name });
 	if(!$.isArray(filenames)) filenames = [filenames];
 	filenames.sort(function(a,b){ //sort filelist: [nexus,xml,phylip,...,tre]
@@ -2316,6 +2386,12 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 		else if(/^\s*\(+['"]?[\w]+.*\;\s*$/.test(file)){ //newick tree
 			parsetree(file, filename);
 		}
+		else if(/^wasabi-highlight-set.*$/.test(file.split("\n",1))){ // highlight set file
+			parse_highlight_set(file);
+		}
+		else if(/^wasabi-alternative-names/.test(file)){ // alternative sequence names
+			parseAlternativeNames(file);
+		}
 		else{
 			errors.push("Unrecognized data format in "+filename);
 		}
@@ -2332,6 +2408,7 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 	if(~datatype.indexOf('phyloxml')) treeopt.phyloxml = Ttreedata; else treeopt.newick = Ttreedata;
 	var treeobj = Ttreedata ? new Smits.PhyloCanvas(treeopt) : {data:''};
 	Ttreedata = '';
+	if (treeobj.data.root) { treeobj.data.root.ladderize(); }
 	
 	var seqnames = Object.keys(Tsequences);
 	
@@ -2406,7 +2483,9 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 		treesvg = treeobj.data? treeobj : {}; treeobj = '';
 		leafnodes = {};
 		model.clearundo();
-		model.treebackup = treesvg.data? treesvg.data.root.removeAnc().write('undo') : '';
+		if(treesvg.data && settingsmodel.undo()){
+			setTimeout(function(){ model.treebackup = treesvg.data.root.removeAnc().write('undo'); }, 100);
+		}
 		model.treesource(treesvg.data? Ttreesource : '');
 		model.treealtered(false);
 		model.noanc(false);
@@ -2510,6 +2589,11 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 		}
 		
 		feedback(); //show 'imported'
+
+		//Hide common gaps automatically if requested
+		if (seqnames.length && model.autohidegaps >= 0) {
+			autohidegaps();
+		}
 		return true;
 	}//no errors => import data
 }//parseimport()
@@ -2904,10 +2988,11 @@ function redraw(options){
 	if(options.firstrun){ //new data imported: prepare tree area
 		if(treesvg.data){ //make tree SVG
 			var svg = $("#tree>svg,#names>svg");
+			/* -- WAS-9 temporarily deactivated ---
 			svg.mousedown(function(e){ //handle nodedrag on tree
 				e.preventDefault();
 				var draggedtag = e.target.tagName;
-				if(draggedtag=='circle' || draggedtag=='tspan'){
+				if(draggedtag=='circle' || draggedtag=='text'){
 					var nodeid = parseInt(e.target.getAttribute('nodeid'));
 					var draggednode = treesvg.data.root.getById(nodeid);
 					if(!draggednode) return;
@@ -2923,11 +3008,19 @@ function redraw(options){
 							if(helper) helper.css({left:evt.pageX+15,top:evt.pageY});
 						}
 			}); } });
+			*/
 		} else { //no tree: make tree/leafname placeholders	
 			$.each(model.visiblerows(),function(n,name){
 				var leafname = leafnodes[name].ensinfo? leafnodes[name].ensinfo.species : name;
+				alt_label = sequence_alternative_labels.get(name);
+				if ( alt_label ) {
+					leafname = alt_label;
+				}
 				var nspan = $('<span style="height:'+model.boxh()+'px;font-size:'+model.fontsize()+'px;cursor:pointer">'+leafname+'</span>');
-				
+				// set class for sequences in sequence_highlight_set
+				if (sequence_highlight_set.has(leafname)) {
+					nspan.addClass( "sequence_set_1");
+				}
 				var hovertimer;
 				nspan.mouseenter(function(){ //show full leaf name on mouseover
 					rowborder({y:n*model.boxh()},'keep'); //show row highlight
@@ -2947,6 +3040,7 @@ function redraw(options){
 					var ens = leafnodes[name].ensinfo, mtitle = '';
 					var nmenu = {'Delete': {t:'Remove this sequence', icon:'trash', 
 						click:function(){ model.visiblerows.remove(name); delete leafnodes[name]; delete sequences[name]; nspan.remove(); redraw(); }}};
+					nmenu['<span class="note">Sequence name: </span> '+name] = '';
 					if(ens){ //show ensembl metadata in the menu
 						mtitle = ens.genetype;
 						if(ens.taxaname) nmenu['<span class="note">Taxa</span> '+ens.taxaname] = '';
@@ -3198,9 +3292,9 @@ function makeRuler(){
 			$ruler.append(markerdiv(visiblecols[t]+1,visiblecols[t+1]));
 		}
 		if(t%tick==0){ //make ruler tickmarks
-			k = t;
+			k = visiblecols[t];
 			if(t+tick>visiblecols.length) tickw = (visiblecols.length%tick)*boxw-4;
-			if(boxw<4){ if(t%100==0){ if(t>=1000){ k = '<span>'+(t/1000)+'K</span>'; }else{ k = '<span>'+t+'</span>'; } }else{ k = '&nbsp;'; } }
+			if(boxw<4){ if(k%100==0){ if(k>=1000){ k = '<span>'+(k/1000)+'K</span>'; }else{ k = '<span>'+k+'</span>'; } }else{ k = '&nbsp;'; } }
 			$ruler.append($('<span style="width:'+tickw+'px">'+k+'</span>'));
 		}
 	}
@@ -3224,7 +3318,7 @@ function movenode(drag,movednode,movedtype){
 		if(movedtype=='circle'){ //add drag helper (node preview)
 			var helper = $(movednode.makeCanvas()).attr('id','draggedtree');
 		}
-		else if(movedtype=='tspan'){
+		else if(movedtype=='text'){
 			var helper = $('<div id="draggedlabel">'+movednode.name+'</div>');
 		}
 		$("body").append(helper);
@@ -3255,7 +3349,7 @@ function movenode(drag,movednode,movedtype){
 		
 	$("body").one('mouseup',function(evnt){ //mouse release
 		var targettype = evnt.target.tagName;
-		if(targettype=='circle'||targettype=='tspan'||(targettype=='line'&&$(evnt.target).attr('class')=='horizontal')){
+		if(targettype=='circle'||targettype=='text'||(targettype=='line'&&$(evnt.target).attr('class')=='horizontal')){
 			var targetid = parseInt(evnt.target.getAttribute('nodeid'));
 			var targetnode = treesvg.data.root.getById(targetid);
 			if(movednode && targetnode){ movednode.move(targetnode); refresh(); }
@@ -3403,11 +3497,15 @@ function treemenu(node){
     menu['Reorder subtree'] = {submenu:{'Swap children':{t:'Swap places of child nodes', icon:'swap', click:function(){node.swap()}}}};
     if(node.visibleLeafCount>2) menu['Reorder subtree']['submenu']['Ladderise subtree'] = {t:'Reorder the subtree', icon:'ladderize', click:function(){node.ladderize()}};
     if(node.parent){
-	menu['Move node'] = {t:'Graft this node to another branch in the tree', icon:'move', click:function(){movenode('',node,'circle')}, noref:true};
+	/*menu['Move node'] = {t:'Graft this node to another branch in the tree', icon:'move', click:function(){movenode('',node,'circle')}, noref:true};
 	menu['Place root here'] = {t:'Place this node as the tree outgroup', icon:'root', click:function(){node.reRoot()}};
-	menu['Remove nodes'] = {submenu:{'Remove this node': {t:'Remove this node and its children from the tree', icon:'trash', click:function(){node.remove()}}}};
+	*/
+	/*menu['Remove nodes'] = {submenu:{'Remove this node': {t:'Remove this node and its children from the tree', icon:'trash', click:function(){node.remove()}}}};
 	if(node.leafCount>2) menu['Remove nodes']['submenu']['Keep only subtree'] = {t:'Remove all nodes except this subtree', icon:'prune', click:function(){node.prune()}};
-    }	
+    }
+    */
+	if(node.leafCount>2) menu['Keep only subtree'] = {t:'Remove all nodes except this subtree', icon:'prune', click:function(){node.prune()}};
+    }
     menu['Export subtree'] = {t:'Export this subtree in newick format', icon:'file_export', click:function(){dialog('export',{exportdata:node.write()})}, css:{'border-top':'1px solid #999'}, noref:true};
     return menu;
 }
@@ -4578,7 +4676,7 @@ function dialog(type,options){
 		var offlinenotif = $('<div data-bind="visible:offline" class="sectiontext"><b>Wasabi is offline</b><br>'+
 		'The Wasabi server is currently out of reach, so some functions may not work.<br>'+
 		'<a class="button square orange" onclick="communicate(\'checkserver\',\'\',{btn:this,restore:true})" title="Check server connection">Reconnect</a>'+
-		'<a class="button square" href="http://wasabiapp.org/feedback">Contact us</a> <hr></div>');
+		'<a class="button square" href="mailto:contact@arb-silva.de">Contact us</a> <hr></div>');
 		
 		var accountnotif = $('<div data-bind="visible:noaccount" class="sectiontext"><b>Wasabi is working in basic mode</b><br>For '+
 		'<span class="label" title="Storage of analysis files on server, launching realignment jobs, sharing etc.">Wasabi features</span>'+
@@ -4888,7 +4986,13 @@ function dialog(type,options){
 	}
 //about/help/contact window
 	else if(type=='about'){
-		var content = $('<div class="sectiontitle"><span class="label" title="Current version: '+model.version.local+'">About Wasabi</span></div><div class="sectiontext">'+
+		var content = $(
+		'<div class="sectiontitle"><span>SILVA version</span></div><div class="sectiontext">'+
+		'This instance of Wasabi has been modified by the  <a href="http://www.arb-silva.de" target="_blank">SILVA Team</a> and may have slightly different functionality with respect to the original software.<br>'+
+		'Please contact us firs regarding issues on this software via our <a href="mailto:contact@arb-silva.de">E-mail address</a>.<br>' +
+		'In compliance with the AGPL License, the source code of this modified software is available on <a href="https://github.com/arb-silva/wasabi/tree/silva-master" target="_blank">github</a>.'+
+		'</div>' +
+		'<div class="sectiontitle"><span class="label" title="Current version: '+model.version.local+'">About Wasabi</span></div><div class="sectiontext">'+
 		'Wasabi is a browser-based application for the visualisation and analysis of multiple alignment molecular sequence data.<br>'+
 		'Its multi-platform user interface is built on most recent HTML5 and Javascript standards and it is recommended to use the latest version of '+
 		'<a href="http://www.mozilla.org/firefox" target="_blank">Firefox</a>, <a href="http://www.apple.com/safari" target="_blank">Safari</a> '+
@@ -4898,10 +5002,19 @@ function dialog(type,options){
 		'<a class="logo" href="http://www.biocenter.helsinki.fi/bi" target="_blank"><img src="images/logo_uh.png"></a>'+
 		'<a class="logo" href="http://ec.europa.eu/research/mariecurieactions" target="_blank"><img src="images/logo_mc.jpg"></a>'+
 		'<a class="logo" href="http://www.helsinki.fi/biocentrum" target="_blank"><img style="height:30px" src="images/logo_bch.gif"></a></div>'+
-		'<div class="sectiontitle"><span>Contact</span></div><div class="sectiontext">'+
+		'<div class="sectiontitle"><span>Original developer\'s Contact</span></div><div class="sectiontext">'+
 		'Wasabi is being developed by Andres Veidenberg from the <a href="http://loytynojalab.biocenter.helsinki.fi" target="_blank">Löytynoja lab</a> in Institute of Biotechnology, University of Helsinki.<br>'+
 		'You can contact us via our <a href="http://wasabiapp.org/feedback" target="_blank">feedback webpage &gt;&gt;</a></div>');
 		var dialogwindow = makewindow('About',content,{id:type, icn:'info', btn:'OK'});
+	}
+//redirection to silva tools using wasabi
+	else if(type=='redirection'){
+		var content = $(
+		'<div class="sectiontitle"><span>View results of SILVA tools</span></div><div class="sectiontext">'+
+		'This instance of Wasabi is used as results viewer for some of the SILVA tools. Follow one of the following links to get to the relative tool:<br>'+
+		'Sequence alignment, classification and tree service: <a href="https://www.arb-silva.de/aligner/">ACT tool</a>.<br>' +
+		'</div>' );
+		var dialogwindow = makewindow('Redirection',content,{id:type, icn:'info', btn:'OK'});
 	}
 //welcome dialog for a new (previously) created user
 	else if(type=='newuser'){
@@ -4970,7 +5083,7 @@ function dialog(type,options){
 		var dironly = opt.item.folder || (!opt.file && !unwrap(opt.item.outfile));
 		settingsmodel.sharedir(dironly);
 		_paq.push(['trackEvent','share',opt.id]); //record sharing event
-		
+
 		if(opt.library){
 			var desc = '<br>to launch Wasabi with your analysis library';
 			url = librarymodel.sharelink()+'/'+settingsmodel.userid();
@@ -4995,6 +5108,7 @@ function dialog(type,options){
 				var shareopt = '<div class="insidediv">'+dirtoggle+selectdataset+'</div><br>';
 			}
 		}
+		
 		var content = ['<div>Paste this URL to a web browser address bar'+desc+'.</div><br>'];
 		var input = $('<input class="transparent" style="width:350px;padding:0" onclick="this.select()" data-bind="value:sharedir()?\''+dirurl+'\':\''+url+'\'"></input>');
 		setTimeout(function(){input[0].select()},500);
@@ -5570,11 +5684,11 @@ function startup(response){
 	if(typeof(localStorage.collapse)!='undefined') toggletop(localStorage.collapse);
 	var launchact = settingsmodel.onlaunch();
 	var urlstr = settingsmodel.urlvars, urlvars = parseurl(settingsmodel.urlvars);
-	setTimeout(function(){window.history.pushState('', '', window.location.pathname)}, 1000); //clear urlvars
+	//setTimeout(function(){window.history.pushState('', '', window.location.pathname)}, 1000); //clear urlvars
 	
 	if(urlvars.disable){ //disable interface items with URL parameters
 		var darr = $.isArray(urlvars.disable)? urlvars.disable : [urlvars.disable];
-		$.each(['menubar','data','tools','zoom','undo','logo','tree','seq','animations','sharing'], function(i,d){
+		$.each(['menubar','data','tools','zoom','undo','logo','silva_logo','tree','seq','animations','sharing'], function(i,d){
 			if(~darr.indexOf(d)) urlvars[d] = false;
 		});
 		$.each(['filemenu','toolsmenu'], function(i,menu){ //disable items from file/toolsmenu
@@ -5648,14 +5762,32 @@ function startup(response){
 		getfile({id:localStorage.openid, file:localStorage.openfile});
 	}
 	else if(launchact=='import dialog'){ dialog('import'); } //show import dialog
+	else if(launchact=='redirect'){ dialog('redirection'); } //direct user to silva sites
 	
 	if(data.plugins){  //donwload & process plugins
 		$.each(data.plugins, function(i,pluginname){
 			getfile({plugin:pluginname, throttle:true, success:function(pjson){ new pluginModel(pjson, pluginname); }});
 		})
 	}
+	if (urlvars.hidegaps >= 0) { // hide columns according to less than N row sequence data
+		model.autohidegaps = urlvars.hidegaps;
+	}
 
 	if(settingsmodel.checkupdates()) checkversion(); //check for updates
+}
+
+function autohidegaps(urlvars) {
+		toolsmodel.hideaction('Hide');
+		toolsmodel.hideconserved(false);
+		toolsmodel.minhidelimit(false);
+		toolsmodel.hidelimit(model.autohidegaps);
+		toolsmodel.gaptype('indels');
+		toolsmodel.gaplen(0);
+		toolsmodel.buflen(0);
+		toolsmodel.countgaps();
+		setTimeout(toolsmodel.markGapsForHiding,16);
+		//alert(toolsmodel.hidecolcount());
+		setTimeout(hidecolumns,16);
 }
 
 //Initiation on page load
