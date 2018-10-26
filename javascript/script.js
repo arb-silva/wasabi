@@ -183,7 +183,7 @@ var koSettings = function(){
 	self.toggle = function(obs){ if(typeof(obs)=='function') obs(!obs()); }
 	self.btntxt = function(obs){ return obs()?'ON':'OFF'; }
 	
-	self.preflist = {tooltipclass:'', undolength:'', autosaveint:'autosave', onlaunch:'', userid:'keepuser', zoomlevel:'keepzoom', colorscheme:'', maskcolor:'', maskletter:'', anccolor:'', ancletter:'', boxborder:'', font:'', windowanim:'', allanim:'', hidebar:'', minlib:'', ladderlib:'', skipversion:'', checkupdates:'local', bundlestart:'local'};
+	self.preflist = {tooltipclass:'', undolength:'', autosaveint:'autosave', onlaunch:'', userid:'keepuser', zoomlevel:'keepzoom', colorscheme:'', maskcolor:'', maskletter:'', anccolor:'', ancletter:'', boxborder:'', font:'', windowanim:'', allanim:'', hidebar:'', minlib:'', ladderlib:'', skipversion:'', checkupdates:'local', bundlestart:'local', scalebar:''};
 	
 	self.saveprefs = function(){ //store preferences to harddisk
 		$.each(self.preflist,function(pref,checkpref){
@@ -357,6 +357,8 @@ var koSettings = function(){
 		if(newsize=='hidden') $('#tree circle').css('display','none');
 		else $('#tree circle').css({r:newsize, display:''});
 	});
+	self.dendogram = ko.observable(false);
+	self.scalebar = ko.observable(true);
 	//UI settings
 	self.backgrounds = ['beige','white','grey'];
 	self.bg = ko.observable('beige');
@@ -384,12 +386,13 @@ var koSettings = function(){
 	//resize seq/tree area
 	self.resizew = function(hide){
 		var leftedge = dom.left.position().left;
-		var rightedge = hide=='seq'? dom.page.width()-30 : hide=='tree'? leftedge+12 : parseInt(dom.page.width()/3);
+		var rightedge = hide=='seq'? dom.page.width()-30 : hide=='tree'? leftedge+62 : parseInt(dom.page.width()/3);
 		var namesw = Math.min(Math.max(50,parseInt(rightedge/3)),200); //tree names width 50-200px
 		dom.left.css('width', rightedge-leftedge);
 		dom.right.css('left', rightedge);
 		$("#namesborderDragline").css('width', rightedge-leftedge);
 		$("#namesborderDrag").css('left', rightedge-leftedge-namesw-12);
+		$("#scalebar").css('width', rightedge-leftedge-namesw-10);
 		dom.tree.css('right', namesw);
 		dom.names.css('width', namesw);
 	}
@@ -397,11 +400,12 @@ var koSettings = function(){
 	self.tree = ko.observable(false); // =>model.treesource
 	self.togglearea = ko.computed(function(){
 		var seq = self.seq(); var tree = self.tree();
-		if(!dom.left) return; //init run
+		if(!dom.left) return; //init (no DOM yet)
 		if(seq && !tree){ self.resizew('tree'); } //hide tree
 		else if(tree && !seq){ self.resizew('seq'); } //hide seq
 		else{ self.resizew(); } //show both
-	}).extend({throttle:500});
+	});
+	self.urldomain = ''; //domain limit for data import URLs
 }
 var settingsmodel = new koSettings();
 var toggle = settingsmodel.toggle;
@@ -885,7 +889,6 @@ var koModel = function(){
 	self.boxw = ko.pureComputed(function(){ return parseInt(self.zlevels[self.zoomlevel()]*self.symbolw()); });
 	self.boxh = ko.pureComputed(function(){ return parseInt(self.zlevels[self.zoomlevel()]*1.3); });
 	self.fontsize = ko.pureComputed(function(){ return parseInt(self.zlevels[self.zoomlevel()]*1.1); });
-	self.dendogram = ko.observable(false);
 	self.activeid = ko.observable(''); //id of active sequence selection area
 	self.activeid.subscribe(function(newid){
 		$("#seq div[class^='selection']").css({'border-color':'','color':''});
@@ -960,12 +963,12 @@ var koModel = function(){
 		return self.version.local<self.version.remote() && settingsmodel.skipversion()!=self.version.remote();
 	});
 	self.noaccount = ko.pureComputed(function(){ return settingsmodel.useraccounts()&&!settingsmodel.userid(); });
-	self.notifications = ko.pureComputed(function(){ return self.treealtered()||self.update()||self.offline()||self.errors()||self.noanc()||self.noaccount(); });
+	self.notifications = ko.pureComputed(function(){ return self.treealtered()||self.update()||self.offline()||self.errors()||self.noaccount(); });
 	self.statusbtn = ko.computed(function(){ //construct notifications button
 		var msgarr = [], running = librarymodel.runningjobs(), ready = librarymodel.readyjobs(), str = '';
 		var jobs = running||ready;
 		
-		if(self.treealtered()||self.noanc()) msgarr.push({short:'<span class="red">Realign</span>', long:'<span class="red">Update alignment</span>'});
+		if(self.treealtered()) msgarr.push({short:'<span class="red">Realign</span>', long:'<span class="red">Update alignment</span>'});
 		if(self.offline()) msgarr.push({short:'<span class="red">Offline</span>', long:'<span class="red">Offline</span>'});
 		if(self.errors()){ msgarr.push({short:'<span class="red">Error</span>', long:'<span class="red">Server error</span>'}); }
 		if(self.update()){ msgarr.push({short:'<span class="green">Update</span>',long:'<span class="green">Update Wasabi</span>'}); }
@@ -1254,6 +1257,7 @@ var koTools = function(){
 };
 var toolsmodel = new koTools();
 
+
 //== Utility functions ==//
 //prettyformat a number
 function numbertosize(number,type,min){ //prettyformat a number
@@ -1278,6 +1282,7 @@ function numbertosize(number,type,min){ //prettyformat a number
     }
 };
 
+
 //convert datestamps to  dates
 function msectodate(msec){
 	msec = unwrap(msec);
@@ -1286,6 +1291,7 @@ function msectodate(msec){
 	return ('0'+t.getDate()).slice(-2)+'.'+('0'+(t.getMonth()+1)).slice(-2)+'.'+t.getFullYear().toString().substr(2)+
 	' at '+t.getHours()+':'+('0'+t.getMinutes()).slice(-2);
 }
+
 
 //parse URL parameters as Object{"param"="val"|["val1","val2"]}
 function parseurl(url){
@@ -1306,6 +1312,7 @@ function parseurl(url){
 	return urlvars;
 }
 
+
 //url => <a>
 var urlregex = /(https?\:\/\/|www\.)+(\w+\.)+[^\s\\]+/ig;
 function makeurl(url,title,regextitle){  //with urlregex: (urlmatch, parenth1, parenth2)
@@ -1314,6 +1321,7 @@ function makeurl(url,title,regextitle){  //with urlregex: (urlmatch, parenth1, p
 	title = regextitle||!title?url:title; 
 	return '<a href="'+url+'" target="_blank">'+title+'</a>';
 }
+
 
 /* Server communication functions */
 //send and receive(+save) data from local server fn(str,obj,[str|obj])
@@ -1505,7 +1513,7 @@ function communicate(action, senddata, options){
 		if(status!="abort"){
 			if(status=="timeout" && options.fabtn){ closewindow(options.btn); }
 		  if(msg){ //server responded with error
-		  	if(~msg.indexOf('nodename nor servname provided')) msg = 'No internet connection';
+		  	if(~msg.indexOf('nodename nor servname provided')) msg = 'Faulty URL or no internet';
 		  	if(model.helsinki){ //for public Wasabi, log&send errors
 		  		var date = new Date();
 		  		date = date.toISOString();
@@ -1517,7 +1525,7 @@ function communicate(action, senddata, options){
 		  		if(action!='errorlog') communicate('errorlog',{errorlog:errorstr}); //send error to server
 		  	}
 		  	console.log('Wasabi server responded to "'+action+'" with error: '+msg);
-		  	errorfunc(toString(msg));
+		  	errorfunc(msg+'');
 		  }
 		  else{ //no response
 				if(options.retry){ //allow 2 retries
@@ -1526,8 +1534,8 @@ function communicate(action, senddata, options){
 				} else { //probably a server exception
 					msg = 'Server communication error ("'+action+'" failed).<br>Strange stuff may follow...';
 					console.log('No server response with '+action);
-					if(action!='checkserver') communicate('checkserver'); //server offline?
-					else errorfunc(msg);
+					if(action!='checkserver') communicate('checkserver'); //ping server
+					errorfunc(msg);
 				}
 			}
 		}
@@ -1559,13 +1567,13 @@ function communicate(action, senddata, options){
 			}
 			}
 		return xhr;
-  		},
+	},
 	data: formdata,
 	dataType: "text",
-        cache: false,
-        contentType: false,
-        processData: false
-    });
+    cache: false,
+    contentType: false,
+    processData: false
+  }); //ajax
 }
 
 //Save current (opened) MSA data to server (library)
@@ -1836,16 +1844,14 @@ function getfile(opt){
 	}; //func download
     
     var showdir = function(refreshed){
-	    if(model.noaccount()){ //cannot use library
-		    var hasdataset = opt.dir||opt.opendataset? 'A shared dataset was opened.' : 'The sharing URL has no default dataset to open.';
-		    dialog('notice', {id:'sharenote', msg:hasdataset+'<br>In order to import the associated analysis history, please create a Wasabi account.'});
-		    return;
-		}
-	    if(librarymodel.getitem(opt.id)){ //folder in library?
-		    if(opt.folder) librarymodel.dirpath(['',opt.id]); //no dataset opened; show content of shared folder.
+	    if(model.noaccount()){ //show shared folder without useraccount
+			communicate('getlibrary', {userid:opt.sharedid}, {after: function(){ dialog('library'); }});   
+	    }
+	    else if(settingsmodel.userid() && librarymodel.getitem(opt.id)){ //analysisid in library
+		    if(opt.folder) librarymodel.dirpath(['',opt.id]); //show shared folder
 		    dialog('library');
 		}
-	    else if(!refreshed) communicate('getlibrary','',{after: function(){ showdir(true); }}); //refresh library & try again
+	    else if(!refreshed) communicate('getlibrary','',{after: function(){ showdir(true); }}); //sync first
 	};
 		
 	var getmeta  = function(){
@@ -1861,7 +1867,7 @@ function getfile(opt){
 			};
 			var metaerror = function(e){ //no meta.txt
 				if(!e) e = 'No response';
-				if(~e.indexOf('Invalid library ID')){
+				if(typeof(e)=='string' && ~e.indexOf('Invalid library ID')){
 					console.log('Invalid analysis ID: '+opt.id);
 					showerror('Analysis ID <b>'+opt.id+'</b> was not found in server.<br>'+
 					'The source dataset may have been deleted or the sharing URL may be faulty.');
@@ -1877,17 +1883,17 @@ function getfile(opt){
 	var usemeta = function(libitem){
 		opt.name = unwrap(libitem.name);
 		if(!opt.file) opt.file = unwrap(libitem.outfile);
-		if(opt.dir){
-			opt.sharedid = opt.id;
-			showdir();
+		if(opt.dir){ //shareid+dirid (analysis+downstream steps)
+			opt.sharedid = optid;
+			showdir(); //sync library
 			delete opt.dir //folder now imported: skip child ID check
 			importdataset();
-		} else if(libitem.folder){
+		} else if(libitem.folder){ //shareid=analysis folder
 			opt.sharedid = opt.id;
 			opt.opendataset = unwrap(libitem.opendataset);
-			if(opt.opendataset){ opt.id = opt.opendataset; getmeta(); }
-			else opt.folder = true;
-			showdir();
+			if(opt.opendataset){ opt.id = opt.opendataset; getmeta(); } //open dataset
+			opt.folder = true;
+			showdir(); //show shared folder
 		}
 		else importdataset(); //import a dataset
 	};
@@ -1958,16 +1964,16 @@ function checkfiles(filearr, options){
 	var seticon = function(i,icn){ //preload and show icon ('spinner'>'save'>'warning'/'tick')
 		if(icn){
 			var ext = icn=='spinner'?'.gif':'.png';
-			var img = $('<img class="icn mall">').hide().on("load",function(){$(this).fadeIn()}).attr("src","images/"+icn+ext);
-			$('li.file span.icon:eq('+i+')',infodiv).empty().append(img);
-		} else { $('li.file span.icon:eq('+i+')',infodiv).empty(); }
+			var img = $('<img class="icn small">').hide().on("load",function(){$(this).fadeIn()}).attr("src","images/"+icn+ext);
+			return $('li.file span.icon:eq('+i+')',infodiv).empty().append(img);
+		} else { return $('li.file span.icon:eq('+i+')',infodiv).empty(); }
 	}
 	
 	var rejected = ko.observableArray(); //flag rejected files in the list
 	rejected.subscribe(function(i){ seticon(i,'warning'); });
 	
 	var displayerror = function(msg){
-		errorspan.append('<span class="red">'+msg+'</span><br>');
+		errorspan.append('<span class="red">'+msg+'.</span><br>');
 		if(options.silent){
 			infowindow.css('display','block');
 			if(backside) infowindow.addClass('flipped');
@@ -1986,8 +1992,9 @@ function checkfiles(filearr, options){
 				if(container().length+rejected().length == filearr.length) peekfiles();
 			};
 			var showerror = function(msg){
-				displayerror(msg); rejected.push(i); 
+				displayerror("Can't load file "+(i+1)+": "+msg); rejected.push(i); 
 				if(container().length+rejected().length == filearr.length) peekfiles();
+				return true; //skip to next file
 			};
 			seticon(i,'spinner');
 			
@@ -1996,11 +2003,14 @@ function checkfiles(filearr, options){
 				return false; //skip datacheck, straight to import
 			}
 			else if(file.url){ //external url
+				if(settingsmodel.urldomain && !file.url.includes(settingsmodel.urldomain)){
+					return showerror('URLs restricted to '+settingsmodel.urldomain);
+				}
 				options.importurl = file.url;
 				if(model.offline()){ //direct download (maybe cross-domain)
 					getfile({fileurl:file.url, name:file.name, error:showerror, success:loadfile});
 				} else { //through Wasabi server
-					ajaxcalls.push(communicate('geturl', {fileurl:file.url}, {retry:true, error:showerror, success:loadfile}));
+					ajaxcalls.push(communicate('geturl', {fileurl:file.url}, {retry:true, error:showerror, success:loadfile, btn:seticon(i)}));
 				}
 			}
 			else if(file.text){ //plain text
@@ -2025,7 +2035,10 @@ function checkfiles(filearr, options){
 			  $.each(container(), function(i, item){
 				item.type = parseimport({filenames:[item.name], mode:'check'});
 				if(item.type) seticon(item.i,'tick'); //item.type = "sequence"|"tree"|false
-				else rejected.push(item.i);
+				else{
+					displayerror("Can't recognize file "+(i+1));
+					rejected.push(item.i);
+				}
 			  });
 			}
 			importfiles();
@@ -2034,9 +2047,10 @@ function checkfiles(filearr, options){
 	
 	//step 3: import files//
 	var importfiles = function(){
+		errorspan.html(errorspan.html().replace('Loading files...', ''));
 		if(rejected().length){ //cancel import: errors in check phase
 			var s = rejected().length>1? 's' : '';
-			displayerror('Cannot recognize the marked file'+s+'.');
+			displayerror('Failed to import the marked file'+s);
 		}
 		else if(options.noimport) closewindow(infowindow);
 		else if(container().length){
@@ -2283,13 +2297,14 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 	var abort = false;
 	$.each(filenames,function(i,filename){  //detect fileformat
 		var file = container.get(filename).data, marr = false;
-		
+		var fileheader = file.substr(0,2000);
+
 		if(typeof(file)=='object' && file.hasOwnProperty('data')){ //Ensembl JSON object
 			if(!file.data[0].homologies) return;
 			parseseq(file.data[0].homologies,filename,'json');
 		}
-		else if(typeof(file)!='string'){ errors.push("Unrecognized data format in "+filename); return true; }
-		else if(/^<.+>$/m.test(file)){ //xml
+		else if(typeof(file)!='string'){ errors.push("Unrecognized data type in "+filename); return true; }
+		else if(/^<.+>$/m.test(fileheader)){ //xml
 			if(~file.indexOf("<phyloxml")){ //phyloxml tree (+seq)
 				var firstbl = file.indexOf("<phylogeny")+10;
 				if(~file.indexOf("<phylogeny",firstbl)){ //multiblock phyloXML
@@ -2335,20 +2350,20 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 			}
 			//if(newickdata.length!=0 && leafdata.length!=0){ return false }//got data, no more files needed
 		}
-		else if(/^[>@].+$/m.test(file)){ //fasta/fastq
-			var format = /^@.+$/m.test(file)? 'fastq' : 'fasta';
+		else if(marr = fileheader.match(/^([>@])\w+/)){ //fasta/fastq
+			var format = marr[1]=='@'? 'fastq' : 'fasta';
 			parseseq(file,filename,format);
 		}
-		else if(/^clustal/i.test(file)){ //Clustal
+		else if(/^clustal/i.test(fileheader)){ //Clustal
 			var lineend = file.search(/[\n\r]/); //skip first line
 			parseseq(file,filename,'clustal',{starti:lineend});
 		}
-		else if(marr = file.match(/^\s*(\d+) {1}(\d+) *[\n\r]/)){ //phylip alignment
+		else if(marr = fileheader.match(/^\s*(\d+) {1}(\d+) *[\n\r]/)){ //phylip alignment
 			//todo: check for ntax&nchar match
 			var lineend = file.search(/[\n\r]/);
 			parseseq(file,filename,'phylip', {ntax:marr[1], nchar:marr[2], starti:lineend});
 		}
-		else if(/^#nexus/i.test(file)){ //NEXUS //todo: check for nchar&ntax&datatype match; matchchar
+		else if(/^#nexus/i.test(fileheader)){ //NEXUS //todo: check for nchar&ntax&datatype match; matchchar
 			var nameline, blockexp = /^begin (\w+)/igm;
 			while(nameline = blockexp.exec(file)){ //parse data blocks
 				var blockname = nameline[1].toLowerCase();
@@ -2519,7 +2534,7 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 		}
 		
 		dom.wrap.css('left',0); dom.seq.css('margin-top',0); dom.treewrap.css('top',0); //reset scroll
-		dom.tree.empty(); dom.names.empty();
+		dom.tree.empty(); dom.names.empty(); dom.scalebar.empty();
 		
 		var redrawopt = {firstrun:true};
 		$.each(importsettings,function(sn,s){ //restore library-item-specfic state settings
@@ -2571,19 +2586,16 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 			});
 			if(emptyleaves.length){
 				var leafsnote = emptyleaves.length+' out of '+Object.keys(leafnodes).length+' tree leaves have no sequence';
-				leafsnote += emptyleaves.length<5? ':<br>'+emptyleaves.join(', ') : '.';
-				var clearbtn = $('<a class="button square small">Delete all sequences</a>');
-				clearbtn.click(function(){
-					librarymodel.openid(''); sequences = {}; redraw(); 
-					closewindow(this);
-				});
-				var prunebtn = $('<a class="button square small">Prune empty leaves</a>');
-				prunebtn.click(function(){
-					toolsmodel.processLeafs('remove',emptyleaves.length); 
-					closewindow(this);
-				});
-				leafsnote = $('<span>'+leafsnote+'<br><br></span>').append(clearbtn);
-				if(Object.keys(leafnodes).length-emptyleaves.length>3) leafsnote.append(prunebtn);
+				leafsnote += emptyleaves.length<5? ':<br>'+emptyleaves.join(', ')+'<br>' : '.<br>';
+				
+				if(Object.keys(leafnodes).length-emptyleaves.length>3){
+					leafsnote += 'Empty leaves were pruned from the tree';
+					setTimeout(function(){toolsmodel.processLeafs('remove', emptyleaves.length);}, 1000);
+				} else {
+					leafsnote += 'Tree and sequence names do not match. Imported just the tree.';
+					librarymodel.openid(''); sequences = {}; redraw();
+				}
+				leafsnote = $('<span>'+leafsnote+'<br><br></span>');
 				notes.push(leafsnote);
 			}
 		}
@@ -2839,7 +2851,7 @@ function parseexport(filetype, options){
 		} else filename = exportmodel.filename()+exportmodel.fileext();
 		$('#exportpaper').text(output);
 		$('#export').addClass('flipped');
-		if(usemodel && !model.offline() && !model.noaccount()) communicate('makefile',{filename:filename.replace(' ','_'),filedata:output},{saveto:exportmodel.fileurl});
+		if(!model.offline()) communicate('makefile',{filename:filename.replace(' ','_'),filedata:output},{saveto:exportmodel.fileurl});
 	}
 	else if(options.exporturl){ //export server file to exportwindow
 		$.get(options.exporturl,function(txt){$('#exportpaper').text(txt)},'text');
@@ -2940,7 +2952,6 @@ function makeColors(){
 	makeCanvases();
 }
 
-//Note: a color palette: http://jsfiddle.net/k8NC2/1/ jalview color schemes
 //Generates vibrant, evenly spaced colors. Adapted from blog.adamcole.ca
 function rainbow(numOfSteps,step,colorscheme){
     var r, g, b;
@@ -3010,7 +3021,7 @@ function redraw(options){
 			}); } });
 			*/
 		} else { //no tree: make tree/leafname placeholders	
-			$.each(model.visiblerows(),function(n,name){
+			$.each(model.visiblerows(),function(n, name){
 				var leafname = leafnodes[name].ensinfo? leafnodes[name].ensinfo.species : name;
 				alt_label = sequence_alternative_labels.get(name);
 				if ( alt_label ) {
@@ -3023,6 +3034,7 @@ function redraw(options){
 				}
 				var hovertimer;
 				nspan.mouseenter(function(){ //show full leaf name on mouseover
+					n = model.visiblerows.indexOf(name); //recheck leaf nr
 					rowborder({y:n*model.boxh()},'keep'); //show row highlight
 					hovertimer = setTimeout(function(){ //show hidden part of name
 						var cssobj = {'font-size': model.fontsize()+'px', 'top': nspan.offset().top+'px', 'left': $("#right").position().left-16+'px'};
@@ -3107,7 +3119,7 @@ function redraw(options){
 		}
 		
 		dom.treewrap.animate({height:newheight, top:top},
-			{duration:400, complete: function(){ zoomtimer = setTimeout(function(){ renderseq(); }, 600);}
+			{duration:300, complete: function(){ zoomtimer = setTimeout(function(){ renderseq(); }, 300);}
 		});
 		if(!$.isEmptyObject(treesvg)) $("#names svg").css('font-size',model.fontsize()+'px');
 		else $("#names span").css({height:model.boxh(),'font-size':model.fontsize()+'px'});
@@ -3504,9 +3516,10 @@ function treemenu(node){
 	if(node.leafCount>2) menu['Remove nodes']['submenu']['Keep only subtree'] = {t:'Remove all nodes except this subtree', icon:'prune', click:function(){node.prune()}};
     }
     */
+
 	if(node.leafCount>2) menu['Keep only subtree'] = {t:'Remove all nodes except this subtree', icon:'prune', click:function(){node.prune()}};
     }
-    menu['Export subtree'] = {t:'Export this subtree in newick format', icon:'file_export', click:function(){dialog('export',{exportdata:node.write()})}, css:{'border-top':'1px solid #999'}, noref:true};
+    menu['Export subtree'] = {t:'Export this subtree in newick format', icon:'file_export', click:function(){dialog('export',{exportdata:node.write(), filename:'subtree.nwk'})}, css:{'border-top':'1px solid #999'}, noref:true};
     return menu;
 }
 
@@ -3550,40 +3563,44 @@ function tooltip(evt,title,options){
 	
 	if(options.target){ //place next to target element
 		var target = typeof(options.target)=='object'? options.target : evt.currentTarget;
-		if(target.jquery) target = target[0];	
-		if(target.tagName){ //target is DOM element
+		if(target.jquery) target = target[0];
+		var tagname = target.tagName? target.tagName.toLowerCase() : '';	
+		if(tagname){ //target is DOM element
 			var elem = $(target);
-			if(!target.width) target.width = elem.width();
-			if(!target.height) target.height = elem.height();
-			if(target.tagName.toLowerCase()=='circle'){ //target is treenode
+			var tpos = target.getBoundingClientRect();
+			target = {
+				x: parseInt(tpos.x||elem.offset().left),
+				y: parseInt(tpos.y||elem.offset().top),
+				width: parseInt(tpos.width||elem.width()),
+				height: parseInt(tpos.height||elem.height())
+			}
+			
+			if(tagname == 'circle'){ //target is treenode
 				if(options.nodeid) treetip = true;
-				target.x = elem.offset().left+25;
-				target.y = elem.offset().top-7;
+				target.x += 25;
+				target.y -= 7;
 			}
-		else if(target.tagName.toLowerCase()=='li'){ //target is tooltip. place as submenu
-			target.x = elem.innerWidth()-2;
-			target.y = elem.position().top-2;
-			if(tipstyle=='white') target.y -= 1;
-		}
-		else{ //place tooltip next to element
-			target.x = elem.offset().left;
-			target.y = elem.offset().top;
-			if(elem.hasClass('svgicon')){ target.x += 27; target.y -= 3; }
-			if(!arr){
-				target.x += 15;
-				target.y += target.height+5;
+			else if(tagname == 'li'){ //target is tooltip. place as submenu
+				target.x = elem.innerWidth()-2;
+				target.y = elem.position().top-2;
+				if(tipstyle=='white') target.y -= 1;
+			}
+			else{ //place tooltip next to element
+				if(elem.hasClass('svgicon')){ target.x += 27; target.y -= 3; }
+				if(!arr){
+					target.x += 15;
+					target.y += target.height+5;
+				}
 			}
 		}
-	  }
-	  if(!target.x) target.x = evt.pageX+5||0;
-	  if(!target.y) target.y = evt.pageY+5||0;
-    }
-    else{ var target = { x: evt.pageX+5, y: evt.pageY+5 }; } //tooltip next to cursor
+    } else { var target = { x: evt.pageX+5, y: evt.pageY+5 }; var elem = ''; } //tooltip next to cursor
+    if(!target.x) target.x = evt.pageX+5||0;
+	if(!target.y) target.y = evt.pageY+5||0;
+	if(!target.width) target.width = 5;
+	if(!target.height) target.height = 5;
     target.x += parseInt(options.shiftx||0); target.y += parseInt(options.shifty||0);
     var rightedge = $('body').innerWidth()-200;
     if(!options.container && target.x > rightedge) target.x = rightedge;
-    if(!target.width) target.width = 5;
-	if(!target.height) target.height = 5;
     
     var node = titleadd = menutooltip = false;
 	if(options.nodeid && treesvg.data){
@@ -3665,8 +3682,8 @@ function tooltip(evt,title,options){
 			setTimeout(function(){tipcontentwrap.css('overflow','visible')},500); //unblock submenus
 		}
 		
-		if(target.tagName && target.tagName.toLowerCase() == 'li'){ //submenu
-			$(target).append(tipdiv);
+		if(elem && elem[0].tagName.toLowerCase() == 'li'){ //submenu
+			elem.append(tipdiv);
 			options.hoverhide = true;
 		}
 	  } //if options.data
@@ -3677,7 +3694,7 @@ function tooltip(evt,title,options){
 			else if(!title) title = 'Tree node. Click for options.';
 		}
 		if(!options.nohide){
-			if(typeof(options.target)!='object' || options.target.tagName) options.hoverhide = true; //DOM target
+			if(typeof(options.target)!='object' || elem) options.hoverhide = true; //DOM target
 			if(typeof(options.autohide)!='string') setTimeout(function(){hidetooltip(tipdiv)}, options.autohide||3000); //remote target
 		} 
 	}
@@ -3685,7 +3702,7 @@ function tooltip(evt,title,options){
 	if(title){ tiptitle.html(title); if(titleadd) tiptitle.append(titleadd); }
 	else{ tiptitle.css('display','none'); }
 	
-   if(options.hoverhide && target.tagName){ $(target).one('mouseleave',function(e){ //hide tooltip on mouseleave
+   if(options.hoverhide && elem){ elem.one('mouseleave',function(e){ //hide tooltip on mouseleave
 	   var hidetip = function(){ hidetooltip(tipdiv,'',activenode); };
 	   if(options.tiphover){ //cancel hide if mouse goes over tooltip
 		   var leavetimer = setTimeout(hidetip, 600);
@@ -3896,7 +3913,7 @@ pluginModel.prototype = {
 	apierr: function(errtxt, iswarning){
 		var addtxt = iswarning?'warning':'error';
 		if(this._curopt){ addtxt += ' when parsing "'+this._curopt+'"'; }
-		var errtxt = 'Wasabi plugin API '+addtxt+': '+errtxt+'!';
+		var errtxt = this._title+' Wasabi plugin '+addtxt+': '+errtxt+'!';
 		if(!iswarning) this._errors.push(errtxt);
 		console.log(errtxt);
 		return '';
@@ -4003,7 +4020,7 @@ pluginModel.prototype = {
 			"tickbox":"checkbox", "switch":"checkbox", "checkbox":"", "hidden":"", "output":"hidden", "select":"", "file":""};
 		var t = data.type && (data.type in types)? data.type : "text", classname = ""; //option type
 		
-		for(var k in data){ if(k in types){ t = k; if(data[k] && !data.title) data.title = data[k]; }} //shorthand "title"
+		for(var k in data){ if(k in types){ t = k; if(data[k] && !data.title) data.title = data[k]; }} //shorthand "title" 
 		if(!data.name) data.name = data.option||"trackName"+Object.keys(this).length; //register tracking/reference name
 		var trackname = this._curopt = data.name;
 		var firstrun = !(trackname in this); //first occurrence in JSON
@@ -4045,10 +4062,11 @@ pluginModel.prototype = {
 				if(typeof(sel)=='string' || typeof(sel)=='number'){ selitem.t = selitem.v = sel; } //string item
 				else if(typeof(sel)=='object'){ //parse object item
 					if(!("value" in sel) && typeof(sel.default)=='string' && sel.default!="yes") sel.value = sel.default;
-					else if(typeof(sel.value)=='object'){ this.apierr('selection item "value" in wrong type (object)'); continue; }
+					else if(typeof(sel.value)=='object'){ this.apierr('selection item "value" needs to be a string (object instead)'); continue; }
 					if(!("title" in sel)){ //fill missing title/value
 						selitem.t = typeof(sel.option)=='string'? sel.option : ("value" in sel)? sel.value : '';
-					} else if(typeof(sel.title)=='object'){ this.apierr('selection item "title" in wrong type (object)'); continue; }
+					} else if(typeof(sel.title)=='object'){ this.apierr('selection item "title" needs to be a string (object instead)'); continue; }
+					else selitem.t = sel.title;
 					selitem.v = ("value" in sel)? sel.value : selitem.t;
 					if(typeof(sel.desc)=='string') selitem.d = sel.desc;
 					if("default" in sel || selitem.v===''){ defsel = true; if(selitem.v) this[trackname](selitem.v); } //initial selection
@@ -4073,29 +4091,15 @@ pluginModel.prototype = {
 							else if(typeof(selopt)=='object'){ $.extend(selitem.opt, selopt); }
 							else{ this.apierr('selection item "option" attribute needs to be string or object'); continue; }
 						}
-							//var isSelected = (function(thisval){ return function(){ return this[trackname]()==thisval; }})(selval);
-							//if(firstrunsel) this[selopt] = ko.pureComputed(isSelected, this);
-							//elems.push('<input type="hidden" name="'+prefix+selopt+'" data-bind="value:$data[\''+selopt+'\']">');	
 					}	
 				}else{ this.apierr('selection item needs to be string, number or object'); }
 				if(firstrunsel){ this[selarr].push(selitem); }//add selection item
 			} //foreach selection item
 			
 			if(firstrunsel){ //add selection list description/option trackers
-				this[trackname].subscribe(function(newsel){ //set dependent options on selection change
-					console.log('selection value set to:'); console.log(newsel);
-					console.log(this);
-					//for(var optname in ){
-					//	if(newsel==sopt.selval){ this[soptname](sopt.optval); console.log('dep. option '+soptname+' set to '+optval);}
-					//});
-				});
 				this[trackname].sindex = ko.pureComputed(function(){ //track index of selected opt
-				return indexOfObj(this[selarr], 'v', this[trackname]());
-			  }, this);
-			}
-			
-			if(!this[trackname].sindex){
-			  
+					return indexOfObj(this[selarr], 'v', this[trackname]());
+				}, this);
 			}
 			
 			var dstr = "option";
@@ -4255,7 +4259,8 @@ pluginModel.prototype = {
 				UI.prepend('<div class="sectiontitle small">'+(data.section?'<span>'+data.section+'</span>':'')+'</div>');
 			}
 			else if("line" in data){
-				if(data.line) UI.prepend('<span>'+data.line+'<span>'); $('div',UI).css('display','inline-block');
+				if(typeof(data.line)=='string') UI.prepend('<span>'+data.line.trim()+' <span>');
+				$('div',UI).css('display','inline-block');
 			}
 			var existrule = data.enable||data.disable;
 			if(existrule) UI.attr("data-bind","if"+(data.disable?"not":"")+":"+this.processRule(existrule));
@@ -4315,10 +4320,12 @@ pluginModel.prototype = {
 		if(!data) return this.apierr('input JSON missing');
 		if(typeof(data)=='string'){ //JSON or native JS
 			try{ data = JSON.parse(data); }
-			catch(e){
-				this.apierr('failed to parse plugin file as JSON: '+e,'warning');
+			catch(err1){
 				try{ eval("data = "+data); }
-				catch(e){ return this.apierr('failed to parse plugin file as javascript object: '+e); }
+				catch(err2){
+					this.apierr('failed to parse plugin file as JSON: '+err1, 'warning');
+					return this.apierr('failed to parse plugin file as javascript object: '+err2);
+				}
 			}
 		}
 		if($.isArray(data)) data = {options:data};
@@ -4654,7 +4661,7 @@ function dialog(type,options){
 		//set up sections of notifications window
 		var notifheader = $('<div class="sectiontitle" data-bind="visible:notifications"><img src="images/info.png"><span>Notifications</span></div>');
 		
-		var realignnotif = $('<div data-bind="visible:treealtered()||noanc()" class="sectiontext"><b>Update the alignment</b><br>'+
+		var realignnotif = $('<div data-bind="visible:treealtered()" class="sectiontext"><b>Update the alignment</b><br>'+
 		'Current sequence alignment needs to be updated to <span data-bind="visible:treealtered">reflect the modifications in phylogenetic tree and </span>calculate ancestral sequences.<br>'+
 		'<div class="insidediv">'+(exportmodel.savetargets().length>1?'<span class="label" title="Choose a library slot '+
 		'for the updated alignment, relative the to the input (currently open) analysis">Store update as</span> '+
@@ -4663,7 +4670,7 @@ function dialog(type,options){
 		'<input id="keepalign" type="checkbox" data-bind="checked:!treealtered()"><span class="label" title="Freeze alignment, only '+
 		'calculate the ancestral sequences (fast update)">keep current alignment</span>'+
 		'<span data-bind="visible:isdna"><br><input type="checkbox" checked="checked" id="usecodons">use codon model</span></div><br>'+
-		'<a class="button square" onclick="model.treealtered(false);model.noanc(false);" title="Hide this notification">Dismiss</a>'+
+		'<a class="button square" onclick="model.treealtered(false)" title="Hide this notification">Dismiss</a>'+
 		'<a class="button square red" data-bind="visible:treealtered()&&treebackup" onclick="model.selectundo(\'firsttree\');model.undo();" title="Undo tree modifications">Revert tree</a></div>');
 		exportmodel.savetarget(exportmodel.savetargets()[0]);
 		var realignbtn = $('<a class="button square orange" title="Update current dataset using PRANK">Update alignment</a>');
@@ -4899,7 +4906,9 @@ function dialog(type,options){
 		var treerows = $('<div class="row bottombtn">').append(expandtitle({title:'Tree leaf labels:', desc:'Click for additional settings', target:treewrap, minh:'34px', maxh:'auto'}).css('display','inline-block'));
 		treerows.append(' <select data-bind="options:leaflabels,value:leaflabel"></select><br>'+
 			'<span>Tree node labels <select style="margin-top:10px" data-bind="options:nodelabels,value:nodelabel"></select></span><br>'+
-			'<span>Node spot size <select style="margin-top:10px" data-bind="options:csizes,value:csize"></select></span>');
+			'<span>Node spot size <select style="margin-top:10px" data-bind="options:csizes,value:csize"></select></span><br>'+
+			'Show scalebar <a class="button toggle" data-bind="css:{on:scalebar},click:toggle.bind($data,scalebar)">'+
+			'<span class="light"></span><span class="text" data-bind="text:btntxt(scalebar)"></span></a>');
 		treewrap.append(treerows);
 			
 		var launchwrap = $('<div class="rowwrap">');
@@ -5683,6 +5692,7 @@ function startup(response){
 	if(startupdone){ return false; } else { startupdone = true; }
 	if(typeof(localStorage.collapse)!='undefined') toggletop(localStorage.collapse);
 	var launchact = settingsmodel.onlaunch();
+	if(!launchact){ launchact = 'demo data'; settingsmodel.onlaunch('blank page'); } //first time launch in this browser
 	var urlstr = settingsmodel.urlvars, urlvars = parseurl(settingsmodel.urlvars);
 	//setTimeout(function(){window.history.pushState('', '', window.location.pathname)}, 1000); //clear urlvars
 	
@@ -5717,7 +5727,6 @@ function startup(response){
 		if(data.userid && data.userid==localid){ //valid proposed user (data.userid comes from server)
 			if(settingsmodel.urlid && (settingsmodel.urlid!==settingsmodel.userid())){ //new userID from URL
 				settingsmodel.keepuser(false);
-				launchact = 'demo data';
 				dialog('newuser',{newid:settingsmodel.urlid}, 2000);
 			}
 			settingsmodel.userid(data.userid);
@@ -5769,9 +5778,12 @@ function startup(response){
 			getfile({plugin:pluginname, throttle:true, success:function(pjson){ new pluginModel(pjson, pluginname); }});
 		})
 	}
+
 	if (urlvars.hidegaps >= 0) { // hide columns according to less than N row sequence data
 		model.autohidegaps = urlvars.hidegaps;
 	}
+	
+	if(data.urldomain && data.urldomain.test(/\w+\.\w+/)) settingsmodel.urldomain = data.urldomain; //server-side domain limit for data import URLs
 
 	if(settingsmodel.checkupdates()) checkversion(); //check for updates
 }
@@ -5799,7 +5811,7 @@ $(function(){
 		return;
 	}
 	
-	var divids = ["page", "content", "left", "right", "top", "bottom", "seq", "seqwindow", "seqwrap", "wrap", "tree", "treewrap", "ruler", "names", "namelabel", "namelabelspan"];
+	var divids = ["page", "content", "left", "right", "top", "bottom", "seq", "seqwindow", "seqwrap", "wrap", "tree", "treewrap", "ruler", "names", "namelabel", "namelabelspan", "scalebar"];
 	$.each(divids, function(i,id){ dom[id] = $("#"+id); }); //add references to Wasabi DOM elements
 	
 	ko.applyBindings(model);
@@ -5807,6 +5819,7 @@ $(function(){
 	/* set up interface-event bindings */
 	$("#treebin div").append(svgicon('trash'));
 	var $left = $("#left"), $right = $("#right"), $dragline = $("#namesborderDragline"), $namedragger = $("#namesborderDrag"), draggerpos;
+	$('#scalebar').css('opacity',0);
 	
 	$("#borderDrag").draggable({ //make sequence/tree width resizable
 		axis: "x", 
@@ -5817,8 +5830,10 @@ $(function(){
 			$right.css('left',dragger.offset.left+10);
 			$dragline.css('width',dragger.offset.left);
 			$namedragger.css('left',dragger.offset.left-draggerpos);
+			dom.scalebar.css('width',dragger.offset.left-draggerpos)
 		},
-		stop: function(){
+		stop: function(e, dragger){
+			dragger.helper.css('left',''); //revert css override
 			$(window).trigger('resize');
 		}
 	});
@@ -5826,8 +5841,10 @@ $(function(){
 		axis: "x", 
 		containment: 'parent',
 		drag: function(event, dragger) {
-			dom.tree.css('right',$left.width()-dragger.offset.left-5);
-			dom.names.css('width',$left.width()-dragger.offset.left-5);
+			var newwidth = $left.width()-dragger.offset.left-5;
+			dom.tree.css('right',newwidth);
+			dom.names.css('width',newwidth);
+			dom.scalebar.css('width',dragger.offset.left-5);
 		}
 	});
 	$("#namesborderDrag").hover(
@@ -5919,8 +5936,8 @@ $(function(){
 	
 	if('ontouchend' in document){
 		document.addEventListener("touchstart", touchHandler, true);
-	document.addEventListener("touchmove", touchHandler, true);
-	document.addEventListener("touchend", touchHandler, true);
+		document.addEventListener("touchmove", touchHandler, true);
+		document.addEventListener("touchend", touchHandler, true);
 	}
 	
 	//Startup
@@ -5934,6 +5951,7 @@ $(function(){
 		$('#top').removeClass('away');
 		$('#startup').fadeOut({complete:function(){ setTimeout(function(){
 			$('#left,#right').css('opacity',1);
+			settingsmodel.scalebar.valueHasMutated();
 			$('#namesborderDragline').removeClass('dragmode');
 		}, 400); }});
 	}, 700); };
