@@ -3265,6 +3265,16 @@ function makeRefImage(target,cleanup,slowfade){
 							else {
 								if(!refSymbols[seqletter]) refSymbols[seqletter] = symbols['?']||symbols['???'];
 								canv.drawImage(refSymbols[seqletter]['canvas'], (canvascol - c)*boxw, rowpx); //draw the helix letter
+								if (visiblecols.length > canvascol && canvasrow == 2) { //draw helixNr underflow if present
+									if ( seqletter != "." && (visiblecols[canvascol] + 1) != visiblecols[canvascol+1] ) { // gap in visiblecols after non dot letter
+										if ( model.refAlignment[seqname][visiblecols[canvascol]+1] != "." ) { //hidden helixNr
+											var fills=canv.fillStyle;
+											canv.fillStyle = "#ff0000";
+											canv.fillRect((canvascol - c)*boxw + 0.66 * boxw, rowpx + boxh / 2 - 1, 0.25 * boxw, 0.25 * boxh); // draw underflow symbol
+											canv.fillStyle = fills;
+										}
+									}
+								}
 							}
 						}
 					}
