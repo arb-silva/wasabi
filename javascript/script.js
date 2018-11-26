@@ -9,7 +9,7 @@ if(!String.prototype.trim){ String.prototype.trim = function(){ return this.repl
 if(!String.prototype.capitalize){ String.prototype.capitalize = function(){ return this.charAt(0).toUpperCase()+this.slice(1); }; }
 
 //== Globals ==//
-var currentversion = "180530-slv1"; //local version (timestamp) of Wasabi
+var currentversion = "181025-slv2"; //local version (timestamp) of Wasabi
 var sequences = {}; //seq. data {name : [s,e,q]}
 var sequence_highlight_set = new Set();
 var treesvg = {}; //phylogenetic nodetree
