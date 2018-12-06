@@ -1067,9 +1067,9 @@ Smits.PhyloCanvas.Render.Phylogram = function(svg, data, options){
 		var unit = Math.pow(10, Math.floor(Math.log(data.maxLenFromRoot)/Math.LN10));
 		var unitlen = unit*scaleX;
 		var x1 = parseInt(canvasWidth/2-unitlen/2);
-		var y = 2;
+		var y = 1;
 		svg.svg3.line(svg.percX(x1), y, svg.percX(x1+unitlen), y);
-		svg.svg3.text(svg.percX(canvasWidth/2), y+17, unit);
+		svg.svg3.text(svg.percX(canvasWidth/2), y+15, unit);
 	};			
 		
 	//reset counts
