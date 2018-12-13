@@ -5375,6 +5375,35 @@ function toggleselection(type,id,exclude){
 	$(divs).each(function(){ if(~type.indexOf('show')) $(this).stop().fadeIn(200); else $(this).fadeOut(200); }); 
 }
 
+//create content for reference alignment HelixNr position info tooltip
+function helixinfo(e){
+	if(!e.pageX||!e.pageY) return false;
+	var x = e.pageX-dom.refseq.offset().left-2;
+	var y = e.pageY-dom.refseq.offset().top-2;
+	x = parseInt(x/model.boxw());
+	y = parseInt(y/model.boxh());
+	if (y != 2) return false;
+	if(x<0){ x=0; }
+	var col = model.visiblecols()[x];
+	var letter = model.refAlignment["helixNr"][col];
+
+	if (letter == ".") return false;
+	// clicked on part of helixNr
+	var Nr = "";
+	while (model.refAlignment["helixNr"][col] != ".") {
+		if (col == 0) { clo-=1; break; }
+		col-=1;
+	} // beginning of Nr
+	col+=1;
+	while (model.refAlignment["helixNr"][col] != ".") {
+		Nr += model.refAlignment["helixNr"][col];
+		col+=1;
+	}
+
+	var content = $('<span style="color:orange">'+Nr+'</span><br>');
+	return {content:content, col:x, row:y, x:x*model.boxw(), y:y*model.boxh(), width:model.boxw(), height:model.boxh()}
+}
+
 //create content for sequence position info tooltip
 function seqinfo(e){ 
 	if(!e.pageX||!e.pageY) return false;
@@ -5926,6 +5955,19 @@ $(function(){
 	
 	$("#names").mouseleave(function(e){ rowborder(e,'hide'); });
 	
+
+	//Add mouse click listener to ref alignment window
+	dom.refwindow.click(function(e){
+		e.preventDefault();
+		model.activeid('');
+		var sdata = helixinfo(e);
+		var bottom = Math.abs(parseInt(dom.refseq.css('margin-top')))+dom.refwindow.innerHeight()-90;
+		if(model.alignheight()*model.boxh()<bottom) bottom = model.alignheight()*model.boxh()-60;
+		var arrowtype = sdata.y>bottom? 'bottom' : 'top';
+		tooltip(e,sdata.content,{container:"#refseq",arrow:arrowtype,target:sdata,shifty:-5});
+	});
+
+
 	//Add mouse click/move listeners to sequence window
 	dom.seqwindow.mousedown(function(e){
 	 e.preventDefault(); //disable image drag etc.
