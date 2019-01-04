@@ -82,32 +82,48 @@
 	  </div>
 	   
 	</div><!--top buttons-->
-	<div id="left">
-		<div id="notree" data-bind="fadevisible:!treesource()">No tree data</div>
-		<div id="treewrap"><div id="tree"></div><div id="names"></div></div>
-		<div id="bottomfade"></div><div id="topfade"></div>
-		<div id="borderDrag" title="Drag to adjust sequence area width"><span>&#x22EE;</span></div>
+	<div id="middle">
+		<div id="refAlign" data-bind="visible: showRefAlignment">
+			<div id="refLeft">
+				<div id="reftitle">Reference Alignment</div>
+				<div id="reflabels">E.coli<br/>Helix<br/>HelixNr</div>
+			</div>
+			<div id="refSeparator"></div>
+			<div id="refRight">
+				<div id="refwindow">
+					<div id="refseqwrap"><div id="refseq"></div></div>
+				</div>
+			</div>
+		</div>
+		<div id="treeAndSeq">
+			<div id="left">
+				<div id="notree" data-bind="fadevisible:!treesource()">No tree data</div>
+				<div id="treewrap"><div id="tree"></div><div id="names"></div></div>
+				<div id="bottomfade"></div><div id="topfade"></div>
+				<div id="borderDrag" title="Drag to adjust sequence area width"><span>&#x22EE;</span></div>
+			</div>
+			<div id="namesborderDragline" class="draggerline dragmode" data-bind="css:{'visible':treesource()||seqsource()}">
+			  <div id="namesborderDrag" class="dragger" title="Drag to adjust tree width">&#x22EE;</div>
+			</div>
+			<div id="scalebar" data-bind="style:{opacity:settingsmodel.scalebar()?1:0}"></div>
+			<div id="right">
+			  <div id="seqwindow">
+				<div id="noseq" data-bind="fadevisible:!seqsource()">No sequence data</div>
+				<div id="wrap">
+				  <div id="ruler"></div>
+				  <div id="seqwrap"><div id="seq"><div id="rborder" class="rowborder"></div></div></div>
+				</div>
+				<img id="leftshadow" src="images/shadow_left.png">
+				<img id="rightshadow" src="images/shadow_right.png">
+				<img id="spinner" style="height:36px" src="images/spinner.gif">
+			  </div>
+			  <div id="horizontalDragger" class="draggerline"><div class="scrollBtn scrollLeftBtn">&lt;</div><div class="dragger"></div><div class="scrollBtn scrollRightBtn">&gt;</div></div>
+			  <div id="verticalDragger" class="draggerline vertical"><div class="scrollBtn scrollUpBtn">&#x2227;</div><div class="dragger"></div><div class="scrollBtn scrollDownBtn">&#x2228;</div></div>
+			  <div id="treebin"><div></div></div>
+			</div>
+			<div id="namelabel"><span></span></div>
+		</div>
 	</div>
-	<div id="namesborderDragline" class="draggerline dragmode" data-bind="css:{'visible':treesource()||seqsource()}">
-	  <div id="namesborderDrag" class="dragger" title="Drag to adjust tree width">&#x22EE;</div>
-	</div>
-	<div id="scalebar" data-bind="style:{opacity:settingsmodel.scalebar()?1:0}"></div>
-	<div id="right">
-	  <div id="seqwindow">
-		<div id="noseq" data-bind="fadevisible:!seqsource()">No sequence data</div>
-	    <div id="wrap">
-	      <div id="ruler"></div>
-	      <div id="seqwrap"><div id="seq"><div id="rborder" class="rowborder"></div></div></div>
-	    </div>
-	    <img id="leftshadow" src="images/shadow_left.png">
-	    <img id="rightshadow" src="images/shadow_right.png">
-	    <img id="spinner" style="height:36px" src="images/spinner.gif">
-	  </div>
-	  <div id="horizontalDragger" class="draggerline"><div class="scrollBtn scrollLeftBtn">&lt;</div><div class="dragger"></div><div class="scrollBtn scrollRightBtn">&gt;</div></div>
-	  <div id="verticalDragger" class="draggerline vertical"><div class="scrollBtn scrollUpBtn">&#x2227;</div><div class="dragger"></div><div class="scrollBtn scrollDownBtn">&#x2228;</div></div>
-	  <div id="treebin"><div></div></div>
-	</div>
-	<div id="namelabel"><span></span></div>
 	<div id="bottom">
 		Andres Veidenberg <span style="color:#ccc">|</span> University of Helsinki<br>
 		<a onclick="dialog('about');return false;" title="Click for more info">About Wasabi</a>
