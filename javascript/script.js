@@ -16,14 +16,17 @@ var treesvg = {}; //phylogenetic nodetree
 var leafnodes = {}; //all leafnodes+visible ancestral leafnodes
 var sequence_alternative_labels = new Map();
 var letters = '--..??**AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz'.split('');
+var refLetters = '-.[]<>0123456789abcdef'.split('');
 var alphabet = {protein:['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V','B','Z','X'],
 DNA:['A','T','G','C','N','X'], RNA:['A','G','C','U','N','X'], gaps: ['-','.','?','*'], codons:{TTT:'F', TTC:'F', TTA:'L', TTG:'L', CTT:'L', CTC:'L', CTA:'L', CTG:'L', ATT:'I', ATC:'I', ATA:'I', ATG:'M', GTT:'V', GTC:'V', GTA:'V', GTG:'V', TCT:'S', TCC:'S', TCA:'S', TCG:'S', CCT:'P',CCC:'P',CCA:'P',CCG:'P', ACT:'T',ACC:'T',ACA:'T',ACG:'T', GCT:'A', GCC:'A',GCA:'A', GCG:'A', TAT:'Y', TAC:'Y', TAA:'*',TAG:'*', CAT:'H',CAC:'H', CAA:'Q',CAG:'Q', AAT:'N',AAC:'N', AAA:'K',AAG:'K', GAT:'D', GAC:'D', GAA:'E',GAG:'E', TGT:'C',TGC:'C', TGA:'*', TGG:'W', CGT:'R',CGC:'R',CGA:'R',CGG:'R', AGT:'S',AGC:'S', AGA:'R', AGG:'R', GGT:'G', GGC:'G', GGA:'G', GGG:'G', NNN:'?', ANN:'?', TNN:'?', GNN:'?',
 CNN:'?', AAN:'?', ATN:'?', AGN:'?', ACN:'?', TAN:'?', TTN:'?', TGN:'?', TCN:'?', GAN:'?', GTN:'?', GGN:'?', GCN:'?', CAN:'?', CTN:'?', CGN:'?', CCN:'?'}};
 var colors = {};
 var symbols = {};
+var refSymbols = {};
 var canvassymbols = {'.':'+'}; //canvas masks
 var canvaslabels = {'-':'gap','.':'ins.','?':'unkn.','*':'stop'};
 var canvaslist = []; //list of rendered seq. tiles
+var refcanvaslist = []; //list of rendered seq. tiles
 var colflags = []; //(selection-)flagged columns
 var rowflags = [];
 var selections = [];
@@ -327,7 +330,9 @@ var koSettings = function(){
 		if(!$('#settings,#info').length) return;
 		makeColors();
 		canvaslist = [];
+		refcanvaslist = [];
 		makeImage('','cleanup','slowfade');
+		makeRefImage('','cleanup','slowfade');
 		return true;
 	}).extend({throttle:500});
 	//tree display settings
@@ -389,6 +394,7 @@ var koSettings = function(){
 		var rightedge = hide=='seq'? dom.page.width()-30 : hide=='tree'? leftedge+62 : parseInt(dom.page.width()/3);
 		var namesw = Math.min(Math.max(50,parseInt(rightedge/3)),200); //tree names width 50-200px
 		dom.left.css('width', rightedge-leftedge);
+		dom.refLeft.css('width', rightedge-leftedge + parseInt($("#borderDrag").css('width')));
 		dom.right.css('left', rightedge);
 		$("#namesborderDragline").css('width', rightedge-leftedge);
 		$("#namesborderDrag").css('left', rightedge-leftedge-namesw-12);
@@ -1078,6 +1084,12 @@ var koModel = function(){
 	};
 	// if >=0 activate automatic hiding of columns with less than N rows with valid data
 	self.autohidegaps = -1;
+	self.showRefAlignment = ko.observable(false);
+	self.refAlignment = {
+		sequence : "",
+		helix : "",
+		helixNr : ""
+	}
 }; //koModel
 var model = new koModel();
 
@@ -1917,6 +1929,17 @@ function getfile(opt){
 	else{ download(); } //just download the requested file
 }
 
+function loadRefAlign(name,type) {
+	var fname = "../refalign/" + name + ".json"
+	var stype = type;
+	$.getJSON(fname, function (data) {
+		model.refAlignment.sequence= data[stype].sequence;
+		model.refAlignment.helix= data[stype].helix;
+		model.refAlignment.helixNr = data[stype].helix_nr;
+		//redraw();
+	});
+}
+
 // Validation of files in import dialog
 function checkfiles(filearr, options){
 	if(!filearr) filearr = [];
@@ -2521,7 +2544,7 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 				model.visiblecols(colarr);
 			}
 		}
-				
+		
 		if(!treesvg.data && seqnames.length){ //no tree: fill tree placeholders
 			var visrows = [];
 			$.each(seqnames,function(indx,seqname){
@@ -2533,8 +2556,21 @@ function parseimport(options){ //options{dialog:jQ,update:true,mode}
 			model.leafcount(seqnames.length);
 		}
 		
-		dom.wrap.css('left',0); dom.seq.css('margin-top',0); dom.treewrap.css('top',0); //reset scroll
+		dom.wrap.css('left',0); dom.refseqwrap.css('left',0); dom.seq.css('margin-top',0); dom.treewrap.css('top',0); //reset scroll
 		dom.tree.empty(); dom.names.empty(); dom.scalebar.empty();
+
+		console.log(model.alignlen() + " - " + model.seqtype())
+		if (model.seqtype() == "RNA") { // Detect and load SILVA reference alignment for e.coli
+				var showref = true;
+				if ( model.alignlen() == 50000 ) {
+					loadRefAlign("ecoli","ali_16s");
+				} else if ( model.alignlen() == 149999 ) {
+					loadRefAlign("ecoli","ali_23s");
+				} else { // no reference available: add further criteria for new alignments here
+					showref = false;
+				}
+				model.showRefAlignment(showref);
+		}
 		
 		var redrawopt = {firstrun:true};
 		$.each(importsettings,function(sn,s){ //restore library-item-specfic state settings
@@ -2950,6 +2986,7 @@ function makeColors(){
 		}); 
 	} else { $.each(Object.keys(symbols),function(j,s){ if(~s.indexOf('_anc')) symbols[s] = canvassymbols[s] = false; }); }
 	makeCanvases();
+	makeRefCanvases();
 }
 
 //Generates vibrant, evenly spaced colors. Adapted from blog.adamcole.ca
@@ -2992,8 +3029,9 @@ function redraw(options){
 		else if(typeof(options.zoom)=='string') return false;
 		clearTimeout(zoomtimer);
 	}
-	canvaslist = []; colflags = []; rowflags = []; model.activeid(''); //clear selections and its flags
+	canvaslist = []; refcanvaslist = []; colflags = []; rowflags = []; model.activeid(''); //clear selections and its flags
 	$("#seq div[id*='selection'],#seq div[id*='cross']").remove();
+	$("#refseq div").remove();
 	$label = $("#namelabel"); $labelspan = $("#namelabel span");
 	
 	if(options.firstrun){ //new data imported: prepare tree area
@@ -3073,13 +3111,17 @@ function redraw(options){
 	} //afterimport
 	
 	var newheight = model.visiblerows().length ? model.visiblerows().length*model.boxh() : model.leafcount()*model.boxh();
+	var newRefHeight = 3*model.boxh();
+	$("#refAlign").css("height",newRefHeight);
+	$("#reftitle").css("font-size", Math.min(20, 2*(model.boxh() - 2) ));
+	$("#reflabels").css("font-size", Math.max(model.boxh() - 1, 1));
 	if(model.boxw()<4){ dom.treewrap.addClass('minimal'); } else { dom.treewrap.removeClass('minimal'); }
 	if(!options.zoom){ dom.treewrap.css('height',newheight); $("#names svg").css('font-size',model.fontsize()+'px'); }
 	if(dom.treewrap.css('display')=='none') dom.treewrap.css('display','block');
 	
 	var renderseq = function(){ //draws sequence canvas
 		if(!$.isEmptyObject(sequences) && !options.treeonly){
-			makeRuler(); makeColors(); makeImage();
+			makeRuler(); makeColors(); makeImage(); makeRefImage();
 		}
 		else if($.isEmptyObject(sequences) && !options.zoom){ //no sequence data
 			model.visiblecols.removeAll(); model.seqsource(''); model.dnasource('');
@@ -3114,6 +3156,9 @@ function redraw(options){
 				dom.seq.empty().append('<div id="rborder" class="rowborder">');
 				dom.seq.css({'width':newwidth, 'height':newheight, 'margin-top':top, opacity:1});
 				dom.wrap.css('left',left);
+				dom.refseq.empty();
+				dom.refseq.css({'width':newwidth, 'height':newRefHeight, opacity:1});
+				dom.refseqwrap.css('left',left);
 			}});
 			$("#spinner").addClass('show');
 		}
@@ -3130,6 +3175,7 @@ function redraw(options){
 		dom.seq.css('margin-top', top);
 		dom.treewrap.css('top',top);
 		dom.wrap.css('left', left);
+		dom.refseqwrap.css('left',left);
 		renderseq();
 	}
 }
@@ -3150,6 +3196,34 @@ function cloneCanvas(oldCanvas){
 	context.drawImage(oldCanvas,0,0);
 	return newCanvas;
 }
+
+//prebuild reference alignment canvas pieces (letter boxes)
+function makeRefCanvases(){ //make canvases for helix letters
+	var x = 0, y = 0, w = model.boxw(), h = model.boxh(), r = parseInt(w/5), fontzise = model.fontsize();
+	if(w>1 && settingsmodel.boxborder()=='border'){ x++; y++; w--; h--; }
+	$.each(refLetters,function(symbol,data){
+		var tmpel = document.createElement('canvas');
+		tmpel.width = model.boxw();
+		tmpel.height = model.boxh();
+		var tmpcanv = tmpel.getContext('2d');
+		tmpcanv.fillStyle = "#FFFFFF"; // data.bgcolor;
+		tmpcanv.fillRect(x,y,w,h);
+		
+		if(true || fontzise > 7){ //draw characters
+			tmpcanv.font = fontzise+'px '+settingsmodel.font();
+			tmpcanv.textAlign = 'center';
+			tmpcanv.textBaseline = 'middle';
+			tmpcanv.fillStyle = "#000000"; //data.fgcolor;
+
+			tmpcanv.fillText(data, w/2+x, (h/2)+y);
+
+		}
+		refSymbols[data] = {};
+		refSymbols[data]['canvas'] = tmpel;
+	});
+	//$('#top>canvas').remove(); $.each(symbols,function(symb,data){$('#top').append(symb+':',data.canvas)}); //Debug
+}
+
 
 //prebuild canvas pieces (letter boxes)
 function makeCanvases(){ //make canvases for sequence letters
@@ -3193,6 +3267,105 @@ function makeCanvases(){ //make canvases for sequence letters
 	});
 	//$('#top>canvas').remove(); $.each(symbols,function(symb,data){$('#top').append(symb+':',data.canvas)}); //Debug
 }
+
+//render reference alignment tiles
+function makeRefImage(target,cleanup,slowfade){
+	var d = new Date(), starttime = d.getTime();
+	var targetx = false, targety = false, boxw = model.boxw(), boxh = model.boxh(), tilesize = {w:4000,h:(3*boxh)};
+	var colstep = parseInt(tilesize.w/boxw); //tile size limits
+	var visiblecols = model.visiblecols();
+	var fadespeed = slowfade? 400 : 100;
+
+	if(target){
+		var tarr = target.split(':');
+		if(tarr[0]=='x'){ targetx = parseInt(tarr[1]); } else if(tarr[0]=='y'){ targety = parseInt(tarr[1]); }
+	}
+	if(!targetx){ if(!$("#refseqwrap").position()) return; targetx = $("#refseqwrap").position().left; }
+	if(!targety){ targety = parseInt(dom.refseq.css('margin-top')); }
+	
+	var colstartpix = parseInt((0-targetx)/boxw);
+	var colstart = colstartpix-(colstartpix%colstep); //snap to (colstep-paced) tile grid
+	var colend = parseInt((dom.refwindow.innerWidth()-targetx)/boxw);
+	if(colend>visiblecols.length) colend = visiblecols.length;
+	
+	var rowstartpix = parseInt((0-targety)/boxh);
+	var rowstart = 0; //snap to tile grid
+	var rowend = parseInt((dom.refwindow.innerHeight()-targety)/boxh);
+	
+	var renderstart = 10, currefcanvas = 0, lastrefcanvas = 0;
+	var oldrefcanvases = $("#refseq div.reftile");
+
+	for(var col = colstart; col<colend; col+=colstep){
+		if(refcanvaslist.indexOf('ref-'+col)==-1){ //canvas not yet made
+			//if(curcanvas==0 && (rowend-rowstart)*(colend-colstart)>100000) $("#spinner").addClass('show'); //lots of sequence - show spinner
+			refcanvaslist.push('ref-'+col);
+			lastrefcanvas++;
+			
+			setTimeout(function(c){ return function(){
+				var canvasrow = 0;
+				var cstep = c+colstep>visiblecols.length? visiblecols.length-c : colstep;
+				var endrow = 3;
+				var endcol = c+cstep;
+				var canvas = document.createElement('canvas');
+				var tilediv = $('<div class="reftile">');
+				canvas.width = cstep*boxw;
+				canvas.height = 3*boxh;
+				canvas.setAttribute('id', 'ref-'+c);
+				var canv = canvas.getContext('2d');
+				canv.fillStyle = 'white';
+				canv.fillRect(0,0,canvas.width,canvas.height);
+				
+				while(canvasrow < endrow){ //draw refalign rows to the tile
+					rowpx = (canvasrow)*boxh;
+					for(var canvascol = c; canvascol<endcol; canvascol++){
+						seqnames = [ "sequence", "helix", "helixNr" ];
+						seqname = seqnames[canvasrow]; 
+						seqletter = model.refAlignment[seqname][visiblecols[canvascol]];
+						if(!seqletter) {
+							continue;
+						}
+						else {
+							if (canvasrow < 1) {
+								if(!symbols[seqletter]) symbols[seqletter] = symbols['?']||symbols['???'];
+								canv.drawImage(symbols[seqletter]['canvas'], (canvascol - c)*boxw, rowpx); //draw the letter
+							}
+							else {
+								if(!refSymbols[seqletter]) refSymbols[seqletter] = symbols['?']||symbols['???'];
+								canv.drawImage(refSymbols[seqletter]['canvas'], (canvascol - c)*boxw, rowpx); //draw the helix letter
+								if (visiblecols.length > canvascol && canvasrow == 2) { //draw helixNr underflow if present
+									if ( seqletter != "." && (visiblecols[canvascol] + 1) != visiblecols[canvascol+1] ) { // gap in visiblecols after non dot letter
+										if ( model.refAlignment[seqname][visiblecols[canvascol]+1] != "." ) { //hidden helixNr
+											var fills=canv.fillStyle;
+											canv.fillStyle = "#ff0000";
+											canv.fillRect((canvascol - c)*boxw + 0.66 * boxw, rowpx + boxh / 2 - 1, 0.25 * boxw, 0.25 * boxh); // draw underflow symbol
+											canv.fillStyle = fills;
+										}
+									}
+								}
+							}
+						}
+					}
+					canvasrow++;
+				}
+			
+				tilediv.css({'left': c*boxw+'px', 'top': '0px'});
+				tilediv.append(canvas);
+				dom.refseq.append(tilediv);
+				tilediv.fadeIn(fadespeed);
+				currefcanvas++;
+				if(currefcanvas==lastrefcanvas){ //last tile made => cleanup
+					//$("#spinner").removeClass('show');
+					setTimeout(function(){ //remove obsolete tiles
+						if(cleanup){ oldrefcanvases.remove(); }
+					},1000);
+				}
+			}}(col),renderstart);
+			renderstart += 500; //time tile renderings
+			
+		}//make canvas	
+	}//for cols
+}
+
 
 //render sequence tiles
 var importstart = 0;
@@ -3241,9 +3414,10 @@ function makeImage(target,cleanup,slowfade,starttime){
 				canvas.width = cstep*boxw;
 				canvas.height = rstep*boxh;
 				canvas.setAttribute('id', r+'|'+c);
-				var canv = canvas.getContext('2d');		
+				var canv = canvas.getContext('2d');
 				canv.fillStyle = 'white';
 				canv.fillRect(0,0,canvas.width,canvas.height);
+
 				
 				while(canvasrow < endrow){ //draw rows of sequence to the tile
 					var seqname = visiblerows[canvasrow], rowpx = (canvasrow - r)*boxh;
@@ -5288,6 +5462,35 @@ function toggleselection(type,id,exclude){
 	$(divs).each(function(){ if(~type.indexOf('show')) $(this).stop().fadeIn(200); else $(this).fadeOut(200); }); 
 }
 
+//create content for reference alignment HelixNr position info tooltip
+function helixinfo(e){
+	if(!e.pageX||!e.pageY) return false;
+	var x = e.pageX-dom.refseq.offset().left-2;
+	var y = e.pageY-dom.refseq.offset().top-2;
+	x = parseInt(x/model.boxw());
+	y = parseInt(y/model.boxh());
+	if (y != 2) return false;
+	if(x<0){ x=0; }
+	var col = model.visiblecols()[x];
+	var letter = model.refAlignment["helixNr"][col];
+
+	if (letter == ".") return false;
+	// clicked on part of helixNr
+	var Nr = "";
+	while (model.refAlignment["helixNr"][col] != ".") {
+		if (col == 0) { clo-=1; break; }
+		col-=1;
+	} // beginning of Nr
+	col+=1;
+	while (model.refAlignment["helixNr"][col] != ".") {
+		Nr += model.refAlignment["helixNr"][col];
+		col+=1;
+	}
+
+	var content = $('<span style="color:orange">'+Nr+'</span><br>');
+	return {content:content, col:x, row:y, x:x*model.boxw(), y:y*model.boxh(), width:model.boxw(), height:model.boxh()}
+}
+
 //create content for sequence position info tooltip
 function seqinfo(e){ 
 	if(!e.pageX||!e.pageY) return false;
@@ -5811,7 +6014,7 @@ $(function(){
 		return;
 	}
 	
-	var divids = ["page", "content", "left", "right", "top", "bottom", "seq", "seqwindow", "seqwrap", "wrap", "tree", "treewrap", "ruler", "names", "namelabel", "namelabelspan", "scalebar"];
+	var divids = ["page", "content", "left", "refLeft", "right", "top", "bottom", "seq", "seqwindow", "seqwrap", "wrap", "tree", "treewrap", "ruler", "names", "namelabel", "namelabelspan", "scalebar", "refseqwrap", "refseq", "refwindow", "borderDrag"];
 	$.each(divids, function(i,id){ dom[id] = $("#"+id); }); //add references to Wasabi DOM elements
 	
 	ko.applyBindings(model);
@@ -5820,7 +6023,10 @@ $(function(){
 	$("#treebin div").append(svgicon('trash'));
 	var $left = $("#left"), $right = $("#right"), $dragline = $("#namesborderDragline"), $namedragger = $("#namesborderDrag"), draggerpos;
 	$('#scalebar').css('opacity',0);
-	
+	var $refLeft = $("#refLeft"), $refRight = $("#refRight"), $refSep = $("#refSeparator");
+	$('#right').on('scroll', function () {
+		$('#refRight').scrollLeft($(this).scrollLeft());
+	});
 	$("#borderDrag").draggable({ //make sequence/tree width resizable
 		axis: "x", 
 		containment: [12, 0, dom.page.width()-30, 0],
@@ -5828,6 +6034,7 @@ $(function(){
 		drag: function(event, dragger) {
 			$left.css('width',dragger.offset.left);
 			$right.css('left',dragger.offset.left+10);
+			$refLeft.css('width',dragger.offset.left+10);
 			$dragline.css('width',dragger.offset.left);
 			$namedragger.css('left',dragger.offset.left-draggerpos);
 			dom.scalebar.css('width',dragger.offset.left-draggerpos)
@@ -5854,6 +6061,19 @@ $(function(){
 	
 	$("#names").mouseleave(function(e){ rowborder(e,'hide'); });
 	
+
+	//Add mouse click listener to ref alignment window
+	dom.refwindow.click(function(e){
+		e.preventDefault();
+		model.activeid('');
+		var sdata = helixinfo(e);
+		var bottom = Math.abs(parseInt(dom.refseq.css('margin-top')))+dom.refwindow.innerHeight()-90;
+		if(model.alignheight()*model.boxh()<bottom) bottom = model.alignheight()*model.boxh()-60;
+		var arrowtype = sdata.y>bottom? 'bottom' : 'top';
+		tooltip(e,sdata.content,{container:"#refseq",arrow:arrowtype,target:sdata,shifty:-5});
+	});
+
+
 	//Add mouse click/move listeners to sequence window
 	dom.seqwindow.mousedown(function(e){
 	 e.preventDefault(); //disable image drag etc.
@@ -5948,8 +6168,8 @@ $(function(){
 	if(urlpath.length && !~urlpath.indexOf('.')) settingsmodel.urlid = urlpath; //launched with account URL
 
 	var showbuttons = function(){ setTimeout(function(){
-		$('#top').removeClass('away');
 		$('#startup').fadeOut({complete:function(){ setTimeout(function(){
+			$('#top').removeClass('away');
 			$('#left,#right').css('opacity',1);
 			settingsmodel.scalebar.valueHasMutated();
 			$('#namesborderDragline').removeClass('dragmode');
